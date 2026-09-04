@@ -1,7 +1,9 @@
 #!/bin/bash
 # vc_install.sh
 
-APP_PATH=$(pwd)
+set -Eeuo pipefail
+
+APP_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "================================================="
 echo " Bắt đầu cài đặt tự động vc_vpn_web lên aaPanel"
@@ -13,6 +15,11 @@ read -p "Nhập tên miền (Domain - ví dụ: vpn.domain.com): " DOMAIN
 read -p "Nhập tên Database (PostgreSQL): " DB_NAME
 read -p "Nhập User Database: " DB_USER
 read -p "Nhập Mật khẩu Database: " DB_PASS
+
+if [[ ! "$DB_NAME" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ || ! "$DB_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+    echo "Lỗi: tên database và user chỉ được chứa chữ cái, số và dấu gạch dưới."
+    exit 1
+fi
 
 # 2. Kiểm tra môi trường PostgreSQL
 if ! command -v psql &> /dev/null; then
@@ -34,7 +41,7 @@ unset PGPASSWORD
 # 5. Cấu hình file .env
 echo "Thiết lập cấu hình file .env..."
 cp .env.example .env
-sed -i "s/DB_CONNECTION=.*/DB_CONNECTION=pgsql/" .env
+sed -i "s/DB_DRIVER=.*/DB_DRIVER=pgsql/" .env
 sed -i "s/DB_HOST=.*/DB_HOST=127.0.0.1/" .env
 sed -i "s/DB_PORT=.*/DB_PORT=5432/" .env
 sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_NAME/" .env
@@ -62,24 +69,24 @@ chmod -R 775 "$APP_PATH/vc_storage"
 chmod -R 775 "$APP_PATH/vc_public/vc_uploads"
 chmod -R 775 "$APP_PATH/vc_logs"
 
-# 8. Chạy kịch bản khởi tạo hệ thống (nếu file tồn tại)
-if [ -f "$APP_PATH/vc_scripts/install.php" ]; then
-    echo "Thực thi kịch bản cấu hình hệ thống..."
-    sudo -u www php "$APP_PATH/vc_scripts/install.php"
+# 8. Tạo tài khoản quản trị sau khi import schema.
+if [ -f "$APP_PATH/vc_scripts/create_admin.php" ]; then
+    echo "Tạo tài khoản quản trị mặc định..."
+    sudo -u www php "$APP_PATH/vc_scripts/create_admin.php"
 fi
 
 # 9. Thiết lập tự động hóa Cronjob đồng bộ với thư mục vc_cron
 echo "Đăng ký các tiến trình Cronjob..."
-CRON_TRAFFIC="* * * * * sudo -u www php $APP_PATH/vc_cron/traffic_sync.php >> /dev/null 2>&1"
-CRON_NODE="*/5 * * * * sudo -u www php $APP_PATH/vc_cron/node_health.php >> /dev/null 2>&1"
-CRON_SUB_RENEW="0 * * * * sudo -u www php $APP_PATH/vc_cron/subscription_renewal.php >> /dev/null 2>&1"
-CRON_SUB_EXPIRY="5 0 * * * sudo -u www php $APP_PATH/vc_cron/subscription_expiry.php >> /dev/null 2>&1"
-CRON_NOTIFY="* * * * * sudo -u www php $APP_PATH/vc_cron/notification_queue.php >> /dev/null 2>&1"
-CRON_PAYMENT="*/5 * * * * sudo -u www php $APP_PATH/vc_cron/payment_check.php >> /dev/null 2>&1"
-CRON_CLEANUP="0 2 * * * sudo -u www php $APP_PATH/vc_cron/cleanup.php >> /dev/null 2>&1"
-CRON_BACKUP="0 3 * * * sudo -u www php $APP_PATH/vc_cron/backup.php >> /dev/null 2>&1"
+CRON_LOG="$APP_PATH/vc_logs/vc_cron"
+CRON_TRAFFIC="* * * * * cd $APP_PATH && sudo -u www php $APP_PATH/vc_cron/traffic_sync.php >> $CRON_LOG/traffic_sync.log 2>&1"
+CRON_NODE="*/5 * * * * cd $APP_PATH && sudo -u www php $APP_PATH/vc_cron/node_health.php >> $CRON_LOG/node_health.log 2>&1"
+CRON_SUB_RENEW="0 * * * * cd $APP_PATH && sudo -u www php $APP_PATH/vc_cron/subscription_renewal.php >> $CRON_LOG/subscription_renewal.log 2>&1"
+CRON_SUB_EXPIRY="5 0 * * * cd $APP_PATH && sudo -u www php $APP_PATH/vc_cron/subscription_expiry.php >> $CRON_LOG/subscription_expiry.log 2>&1"
+CRON_PAYMENT="*/5 * * * * cd $APP_PATH && sudo -u www php $APP_PATH/vc_cron/payment_check.php >> $CRON_LOG/payment_check.log 2>&1"
+CRON_CLEANUP="0 2 * * * cd $APP_PATH && sudo -u www php $APP_PATH/vc_cron/cleanup.php >> $CRON_LOG/cleanup.log 2>&1"
+CRON_BACKUP="0 3 * * * cd $APP_PATH && sudo -u www php $APP_PATH/vc_cron/backup.php >> $CRON_LOG/backup.log 2>&1"
 
-(crontab -l 2>/dev/null | grep -v -F "$APP_PATH/vc_cron"; echo "$CRON_TRAFFIC"; echo "$CRON_NODE"; echo "$CRON_SUB_RENEW"; echo "$CRON_SUB_EXPIRY"; echo "$CRON_NOTIFY"; echo "$CRON_PAYMENT"; echo "$CRON_CLEANUP"; echo "$CRON_BACKUP") | crontab -
+(crontab -l 2>/dev/null | grep -v -F "$APP_PATH/vc_cron"; echo "$CRON_TRAFFIC"; echo "$CRON_NODE"; echo "$CRON_SUB_RENEW"; echo "$CRON_SUB_EXPIRY"; echo "$CRON_PAYMENT"; echo "$CRON_CLEANUP"; echo "$CRON_BACKUP") | crontab -
 
 echo "================================================="
 echo " Cài đặt mã nguồn hoàn tất thành công!"

@@ -31,11 +31,11 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
 
-    $stmt = $pdo->query("SELECT id, gateway, reference_code FROM transactions WHERE status = 'pending'");
+    $stmt = $pdo->query("SELECT id, provider, transaction_id FROM payments WHERE status = 'pending'");
     $transactions = $stmt->fetchAll();
 
     foreach ($transactions as $tx) {
-        echo "Checking transaction ID: {$tx['id']} on gateway {$tx['gateway']}...\n";
+        echo "Checking payment ID: {$tx['id']} on provider {$tx['provider']}...\n";
         // Gateway API verification logic goes here
     }
 

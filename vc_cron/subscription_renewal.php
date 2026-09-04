@@ -32,7 +32,7 @@ try {
     ]);
 
     // Fetch subscriptions due for auto-renewal
-    $stmt = $pdo->query("SELECT id, user_id, package_id FROM subscriptions WHERE auto_renew = true AND status = 'active' AND expires_at <= NOW() + INTERVAL '1 day'");
+    $stmt = $pdo->query("SELECT id, user_id, plan_id FROM subscriptions WHERE auto_renew = true AND status = 'active' AND expires_at <= NOW() + INTERVAL '1 day'");
     $subscriptions = $stmt->fetchAll();
 
     foreach ($subscriptions as $sub) {

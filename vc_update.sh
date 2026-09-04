@@ -1,7 +1,9 @@
 #!/bin/bash
 # vc_update.sh
 
-APP_PATH=$(pwd)
+set -Eeuo pipefail
+
+APP_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "================================================="
 echo " Bắt đầu cập nhật mã nguồn vc_vpn_web"

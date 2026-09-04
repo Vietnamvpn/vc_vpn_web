@@ -46,7 +46,8 @@ if (is_dir($migrationsPath)) {
         try {
             $pdo->exec($sql);
         } catch (PDOException $e) {
-            echo "Migration notice/error in " . basename($file) . ": " . $e->getMessage() . "\n";
+            fwrite(STDERR, "Migration failed in " . basename($file) . ": " . $e->getMessage() . "\n");
+            exit(1);
         }
     }
     echo "Database migrations updated successfully.\n";
