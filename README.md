@@ -1,11 +1,48 @@
+# 🛡️ VC VPN Web - System Management & Commerce
 
-#các lệnh chạy như sau :
+Hệ thống quản lý dịch vụ VPN, tự động hóa cấp phát tài khoản, quản lý gói cước, đồng bộ lưu lượng và tích hợp thanh toán.
+
+---
+
+## 🚀 Hướng Dẫn Cài Đặt Nhanh
+
+Thực hiện các lệnh sau trên Server/VPS để tiến hành cài đặt:
+
+```bash
 cd /www/wwwroot/vpn2s.linksub24h.com
-git clone https://github.com/Vietnamvpn/vc_vpn_web.git .
+git clone [https://github.com/Vietnamvpn/vc_vpn_web.git](https://github.com/Vietnamvpn/vc_vpn_web.git) .
 chmod +x vc_install.sh
 ./vc_install.sh
+```
+
 ---
-## 📂 Cấu trúc Thư mục Dự án
+
+## ⚙️ Yêu Cầu Môi Trường & Cấu Hình Bảo Mật PHP
+
+Để hệ thống vận hành ổn định, xử lý mượt mà các tác vụ mã hóa, JSON, cURL và đảm bảo an toàn tối đa, vui lòng cấu hình môi trường PHP theo khuyến nghị dưới đây:
+
+### 1. Các PHP Extensions Bắt Buộc
+* **pdo_mysql**: Kết nối cơ sở dữ liệu MySQL / MariaDB.
+* **openssl**: Mã hóa dữ liệu, token và bảo vệ thông tin xác thực.
+* **mbstring**: Xử lý chuỗi đa ngôn ngữ (chuẩn UTF-8).
+* **curl**: Giao tiếp API với các Node VPN và cổng thanh toán.
+* **json**: Đọc/ghi cấu hình và lưu trữ dữ liệu JSONB.
+* **fileinfo**: Kiểm tra định dạng tệp tin khi người dùng tải lên avatar hoặc chứng từ.
+
+### 2. Cấu Hình Bảo Mật `php.ini`
+* **disable_functions**: Vô hiệu hóa các hàm nguy hiểm để ngăn chặn thực thi lệnh hệ thống trái phép:
+  ```ini
+  disable_functions = exec, system, passthru, shell_exec, proc_open, popen
+  ```
+  *(Chỉ bật ngoại lệ trên các script cron / CLI nội bộ nếu thực sự cần thiết).*
+* **display_errors = Off**: Tắt hiển thị lỗi trực tiếp trên giao diện ở môi trường Production để tránh lộ cấu trúc mã nguồn.
+* **expose_php = Off**: Ẩn thông tin phiên bản PHP trên HTTP Header nhằm chống rà quét lỗ hổng tự động.
+
+---
+
+## 📂 Cấu Trúc Thư Mục Dự Án
+
+```text
 vc_vpn_web/
 │
 ├── vc_install.sh
@@ -563,14 +600,15 @@ vc_vpn_web/
 │   └── vc_cron/
 │
 └── vc_docs/
-├── database.md
-├── installation.md
-├── aaPanel.md
-├── git-deployment.md
-├── admin.md
-├── staff.md
-├── api.md
-├── subscription.md
-├── vpn-integration.md
-├── payment-integration.md
-└── permissions.md
+    ├── database.md
+    ├── installation.md
+    ├── aaPanel.md
+    ├── git-deployment.md
+    ├── admin.md
+    ├── staff.md
+    ├── api.md
+    ├── subscription.md
+    ├── vpn-integration.md
+    ├── payment-integration.md
+    └── permissions.md
+```
