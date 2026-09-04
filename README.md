@@ -4,39 +4,94 @@ Hệ thống quản lý dịch vụ VPN, tự động hóa cấp phát tài kho�
 
 ---
 
-## 🚀 Hướng Dẫn Cài Đặt Nhanh
+## 🚀 Hướng Dẫn Cài Đặt Theo Thứ Tự (Step-by-Step)
 
-Thực hiện các lệnh sau trên Server/VPS để tiến hành cài đặt:
+Thực hiện lần lượt các bước dưới đây trên VPS / Server của bạn:
+
+### Bước 1: Di chuyển vào thư mục cài đặt
+* **Mục đích:** Truy cập đúng thư mục gốc của trang web trên Server (thay đổi đường dẫn theo đúng tên miền của bạn nếu cần).
 
 ```bash
 cd /www/wwwroot/vpn2s.linksub24h.com
-git clone [https://github.com/Vietnamvpn/vc_vpn_web.git](https://github.com/Vietnamvpn/vc_vpn_web.git) .
+```
+
+### Bước 2: Tải mã nguồn từ GitHub
+* **Mục đích:** Clone toàn bộ mã nguồn của dự án về thư mục hiện tại.
+
+```bash
+git clone https://github.com/Vietnamvpn/vc_vpn_web.git .
+```
+
+### Bước 3: Phân quyền file cài đặt
+* **Mục đích:** Cấp quyền thực thi (`+x`) cho file script `vc_install.sh` để có thể chạy trực tiếp.
+
+```bash
 chmod +x vc_install.sh
+```
+
+### Bước 4: Chạy Script cài đặt tự động
+* **Mục đích:** Khởi chạy quá trình tự động thiết lập hệ thống, cơ sở dữ liệu và cấu hình ban đầu.
+
+```bash
 ./vc_install.sh
 ```
 
 ---
 
-## ⚙️ Yêu Cầu Môi Trường & Cấu Hình Bảo Mật PHP
+## 🌐 Cấu Hình Web Server & Điều Hướng (Apache / `.htaccess`)
 
-Để hệ thống vận hành ổn định, xử lý mượt mà các tác vụ mã hóa, JSON, cURL và đảm bảo an toàn tối đa, vui lòng cấu hình môi trường PHP theo khuyến nghị dưới đây:
+* **Mục đích:** Cấu hình tệp `.htaccess` tại thư mục gốc của dự án (`vc_public/` hoặc thư mục web root) để chặn duyệt thư mục trái phép và chuyển hướng tất cả Request về tệp `index.php` phục vụ cơ chế Router.
 
-### 1. Các PHP Extensions Bắt Buộc
-* **pdo_mysql**: Kết nối cơ sở dữ liệu MySQL / MariaDB.
-* **openssl**: Mã hóa dữ liệu, token và bảo vệ thông tin xác thực.
-* **mbstring**: Xử lý chuỗi đa ngôn ngữ (chuẩn UTF-8).
-* **curl**: Giao tiếp API với các Node VPN và cổng thanh toán.
-* **json**: Đọc/ghi cấu hình và lưu trữ dữ liệu JSONB.
-* **fileinfo**: Kiểm tra định dạng tệp tin khi người dùng tải lên avatar hoặc chứng từ.
+Tạo hoặc chỉnh sửa tệp `.htaccess` với nội dung sau:
 
-### 2. Cấu Hình Bảo Mật `php.ini`
-* **disable_functions**: Vô hiệu hóa các hàm nguy hiểm để ngăn chặn thực thi lệnh hệ thống trái phép:
+```apache
+<IfModule mod_rewrite.c>
+    Options -MultiViews -Indexes
+    RewriteEngine On
+
+    # Xử lý chuyển hướng nếu không phải là tệp hoặc thư mục thực tế
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+```
+
+* **Giải thích chi tiết:**
+  * `Options -MultiViews -Indexes`: Ẩn danh sách tệp/thư mục khi không có file chỉ mục (`index`), ngăn ngừa lộ tài nguyên.
+  * `RewriteEngine On`: Bật bộ máy điều hướng URL của Apache.
+  * `RewriteCond %{REQUEST_FILENAME} !-f`: Kiểm tra nếu đường dẫn KHÔNG trỏ tới một tệp tin thực tế.
+  * `RewriteCond %{REQUEST_FILENAME} !-d`: Kiểm tra nếu đường dẫn KHÔNG trỏ tới một thư mục thực tế.
+  * `RewriteRule ^ index.php [L]`: Chuyển hướng toàn bộ yêu cầu còn lại vào file `index.php` làm lối vào duy nhất (Single Entry Point).
+
+---
+
+## ⚙️ Cấu Hình Môi Trường & Bảo Mật PHP
+
+### 1. Bật các PHP Extensions bắt buộc
+* **Mục đích:** Đảm bảo PHP có đủ các thư viện phụ thuộc để vận hành toàn bộ chức năng.
+
+* **`pdo_mysql`**: Kết nối và làm việc với cơ sở dữ liệu MySQL / MariaDB.
+* **`openssl`**: Mã hóa dữ liệu, mã hóa token và thông tin đăng nhập.
+* **`mbstring`**: Xử lý chuỗi văn bản đa ngôn ngữ (chuẩn UTF-8).
+* **`curl`**: Gửi yêu cầu API đến các Node VPN và cổng thanh toán.
+* **`json`**: Đọc/ghi file cấu hình JSON và dữ liệu JSONB.
+* **`fileinfo`**: Kiểm tra định dạng an toàn của tệp tải lên (Avatar, chứng từ).
+
+### 2. Cấu hình bảo mật trong file `php.ini`
+* **Mục đích:** Vô hiệu hóa các hàm nguy hiểm và ẩn thông tin hệ thống khỏi hacker.
+
+* **Tắt các hàm nguy hiểm:**
   ```ini
   disable_functions = exec, system, passthru, shell_exec, proc_open, popen
   ```
-  *(Chỉ bật ngoại lệ trên các script cron / CLI nội bộ nếu thực sự cần thiết).*
-* **display_errors = Off**: Tắt hiển thị lỗi trực tiếp trên giao diện ở môi trường Production để tránh lộ cấu trúc mã nguồn.
-* **expose_php = Off**: Ẩn thông tin phiên bản PHP trên HTTP Header nhằm chống rà quét lỗ hổng tự động.
+* **Tắt hiển thị lỗi trực tiếp (tránh lộ thông tin nguồn khi xảy ra sự cố):**
+  ```ini
+  display_errors = Off
+  ```
+* **Ẩn phiên bản PHP trên Header:**
+  ```ini
+  expose_php = Off
+  ```
 
 ---
 

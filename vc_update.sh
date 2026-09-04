@@ -1,93 +1,709 @@
-#!/bin/bash
-# vc_update.sh - Optimized & Clean CLI Interface
+# 🛡️ VC VPN Web - System Management & Commerce
 
-set -Eeuo pipefail
+Hệ thống quản lý dịch vụ VPN, tự động hóa cấp phát tài khoản, quản lý gói cước, đồng bộ lưu lượng và tích hợp thanh toán.
 
-# Màu sắc hiển thị terminal
-GREEN="\033[0;32m"
-YELLOW="\033[1;33m"
-RED="\033[0;31m"
-CYAN="\033[0;36m"
-NC="\033[0m" # No Color
+---
 
-APP_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+## 🚀 Hướng Dẫn Cài Đặt Theo Thứ Tự (Step-by-Step)
 
-# Kiểm tra quyền root
-if [[ "$(id -u)" -ne 0 ]]; then
-    echo -e "${RED}Lỗi: Vui lòng chạy script bằng quyền root: sudo ./vc_update.sh${NC}"
-    exit 1
-fi
+### Bước 1: Cập nhật hệ thống VPS
+* **Mục đích:** Cập nhật các gói phần mềm và vá lỗi bảo mật mới nhất cho hệ điều hành VPS.
 
-clear
-echo -e "${CYAN}=================================================${NC}"
-echo -e "${GREEN}      CẬP NHẬT MÃ NGUỒN VC_VPN_WEB TỰ ĐỘNG       ${NC}"
-echo -e "${CYAN}=================================================${NC}"
-echo -e "Thư mục hiện tại: ${YELLOW}$APP_PATH${NC}\n"
+```bash
+sudo apt update && sudo apt upgrade -y
+```
 
-# Tự động loại bỏ file cấu hình extension zip lỗi nếu tồn tại trên aaPanel
-if [ -f "/www/server/php/84/etc/conf.d/zip.ini" ]; then
-    rm -f /www/server/php/84/etc/conf.d/zip.ini
-fi
+---
 
-# 1. Kéo mã nguồn mới từ Git
-echo -e "${CYAN}[1/5] Tải mã nguồn mới từ kho Git...${NC}"
-if [ -d "$APP_PATH/.git" ]; then
-    git checkout -- . > /dev/null 2>&1 || true
-    git pull origin main
-    echo -e " ${GREEN}✔ Cập nhật mã nguồn Git thành công.${NC}"
-else
-    echo -e " ${YELLOW}ℹ Thư mục không phải repository Git, bỏ qua bước pull.${NC}"
-fi
+### Bước 2: Cài đặt aaPanel
+* **Mục đích:** Cài đặt bảng điều khiển aaPanel để quản lý Web Server, Database và tên miền.
 
-# 2. Cập nhật thư viện Composer
-echo -e "${CYAN}[2/5] Cập nhật các gói thư viện Composer...${NC}"
-if command -v composer &> /dev/null; then
-    composer install --no-dev --optimize-autoloader --working-dir="$APP_PATH" > /dev/null 2>&1
-    echo -e " ${GREEN}✔ Cập nhật thư viện thành công.${NC}"
-else
-    echo -e " ${YELLOW}ℹ Composer chưa được cài đặt, bỏ qua bước này.${NC}"
-fi
+```bash
+URL=https://www.aapanel.com/script/install_panel_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO $URL ;else wget --no-check-certificate -O install_panel_en.sh $URL;fi;bash install_panel_en.sh ipssl
+```
 
-# 3. Cập nhật cơ sở dữ liệu (Migration)
-echo -e "${CYAN}[3/5] Cập nhật cấu trúc cơ sở dữ liệu...${NC}"
-if [ -f "$APP_PATH/vc_scripts/migrate.php" ]; then
-    if id www >/dev/null 2>&1; then
-        sudo -u www php "$APP_PATH/vc_scripts/migrate.php"
-    else
-        php "$APP_PATH/vc_scripts/migrate.php"
-    fi
-    echo -e " ${GREEN}✔ Migration cơ sở dữ liệu hoàn tất.${NC}"
-else
-    echo -e " ${YELLOW}ℹ Không tìm thấy file migrate.php, bỏ qua.${NC}"
-fi
+---
 
-# 4. Xóa Cache hệ thống
-echo -e "${CYAN}[4/5] Dọn dẹp bộ nhớ đệm ứng dụng...${NC}"
-if [ -f "$APP_PATH/vc_scripts/clear_cache.php" ]; then
-    if id www >/dev/null 2>&1; then
-        sudo -u www php "$APP_PATH/vc_scripts/clear_cache.php"
-    else
-        php "$APP_PATH/vc_scripts/clear_cache.php"
-    fi
-    echo -e " ${GREEN}✔ Dọn dẹp cache hoàn tất.${NC}"
-else
-    echo -e " ${YELLOW}ℹ Không tìm thấy file clear_cache.php, bỏ qua.${NC}"
-fi
+### Bước 3: Cài đặt các ứng dụng bắt buộc trên aaPanel
+* **Mục đích:** Truy cập giao diện web aaPanel và chọn cài đặt các môi trường sau:
+  * **Apache 2.4** (Web Server)
+  * **MySQL 5.7** trở lên (Database)
+  * **PHP 8.4** (Môi trường chạy ứng dụng)
+  * **phpMyAdmin 5.2** (Giao diện quản lý Database)
 
-# 5. Thiết lập phân quyền thư mục
-echo -e "${CYAN}[5/5] Thiết lập lại phân quyền thư mục...${NC}"
-if id www >/dev/null 2>&1; then
-    chown -R www:www "$APP_PATH"
-fi
-find "$APP_PATH" -type d -exec chmod 755 {} \;
-find "$APP_PATH" -type f -exec chmod 644 {} \;
-if [ -f "$APP_PATH/.env" ]; then
-    chmod 640 "$APP_PATH/.env"
-fi
-mkdir -p "$APP_PATH/vc_storage" "$APP_PATH/vc_public/vc_uploads" "$APP_PATH/vc_logs"
-chmod -R 775 "$APP_PATH/vc_storage" "$APP_PATH/vc_public/vc_uploads" "$APP_PATH/vc_logs"
-echo -e " ${GREEN}✔ Phân quyền hệ thống hoàn tất.${NC}"
+---
 
-echo -e "\n${CYAN}================================================="
-echo -e "${GREEN}      CẬP NHẬT MÃ NGUỒN THÀNH CÔNG 100%!        ${NC}"
-echo -e "${CYAN}=================================================${NC}"
+### Bước 4: Cấu hình Môi Trường & Bảo Mật PHP (Trên aaPanel)
+* **Mục đích:** Thiết lập đầy đủ thư viện và bảo mật cho PHP 8.4 ngay sau khi cài đặt thành công.
+
+1. **Bật các PHP Extensions bắt buộc:** Vào **aaPanel > App Store > PHP 8.4 > Install extensions** và bật:
+   * **pdo_mysql**: Kết nối và làm việc với cơ sở dữ liệu MySQL / MariaDB.
+   * **openssl**: Mã hóa dữ liệu, mã hóa token và thông tin đăng nhập.
+   * **mbstring**: Xử lý chuỗi văn bản đa ngôn ngữ (chuẩn UTF-8).
+   * **curl**: Gửi yêu cầu API đến các Node VPN và cổng thanh toán.
+   * **json**: Đọc/ghi file cấu hình JSON và dữ liệu JSONB.
+   * **fileinfo**: Kiểm tra định dạng an toàn của tệp tải lên (Avatar, chứng từ).
+
+2. **Cấu hình bảo mật trong file `php.ini`:** Vào **aaPanel > App Store > PHP 8.4 > Configuration / Disabled functions**:
+   * **Tắt các hàm nguy hiểm (Disabled functions):**
+     ```ini
+     disable_functions = exec, system, passthru, shell_exec, proc_open, popen
+     ```
+   * **Tắt hiển thị lỗi trực tiếp (display_errors):**
+     ```ini
+     display_errors = Off
+     ```
+   * **Ẩn phiên bản PHP trên Header (expose_php):**
+     ```ini
+     expose_php = Off
+     ```
+
+---
+
+### Bước 5: Di chuyển vào thư mục cài đặt
+* **Mục đích:** Truy cập đúng thư mục gốc của trang web trên Server.
+
+```bash
+cd /www/wwwroot/vpn2s.linksub24h.com
+```
+
+---
+
+### Bước 6: Tải mã nguồn từ GitHub
+* **Mục đích:** Clone toàn bộ mã nguồn của dự án về thư mục hiện tại (Lưu ý dấu chấm ` .` ở cuối lệnh).
+
+```bash
+git clone https://github.com/Vietnamvpn/vc_vpn_web.git .
+```
+
+---
+
+### Bước 7: Phân quyền file cài đặt
+* **Mục đích:** Cấp quyền thực thi (`+x`) cho file script `vc_install.sh`.
+
+```bash
+chmod +x vc_install.sh
+```
+
+---
+
+### Bước 8: Chạy Script cài đặt tự động
+* **Mục đích:** Khởi chạy quá trình tự động thiết lập hệ thống, cơ sở dữ liệu và cấu hình ban đầu.
+
+```bash
+./vc_install.sh
+```
+
+---
+
+## 🌐 Cấu Hình Web Server & Điều Hướng (Apache / `.htaccess`)
+
+* **Mục đích:** Cấu hình tệp `.htaccess` tại thư mục gốc của dự án (`vc_public/` hoặc thư mục web root) để chặn duyệt thư mục trái phép và chuyển hướng tất cả Request về tệp `index.php` phục vụ cơ chế Router.
+
+Tạo hoặc chỉnh sửa tệp `.htaccess` với nội dung sau:
+
+```apache
+<IfModule mod_rewrite.c>
+    Options -MultiViews -Indexes
+    RewriteEngine On
+
+    # Xử lý chuyển hướng nếu không phải là tệp hoặc thư mục thực tế
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+```
+
+* **Giải thích chi tiết:**
+  * `Options -MultiViews -Indexes`: Ẩn danh sách tệp/thư mục khi không có file chỉ mục (`index`), ngăn ngừa lộ tài nguyên.
+  * `RewriteEngine On`: Bật bộ máy điều hướng URL của Apache.
+  * `RewriteCond %{REQUEST_FILENAME} !-f`: Kiểm tra nếu đường dẫn KHÔNG trỏ tới một tệp tin thực tế.
+  * `RewriteCond %{REQUEST_FILENAME} !-d`: Kiểm tra nếu đường dẫn KHÔNG trỏ tới một thư mục thực tế.
+  * `RewriteRule ^ index.php [L]`: Chuyển hướng toàn bộ yêu cầu còn lại vào file `index.php` làm lối vào duy nhất (Single Entry Point).
+
+---
+
+## 🔄 Hướng Dẫn Cập Nhật Hệ Thống
+
+Khi có phiên bản mới trên GitHub, chạy lệnh sau để cập nhật mã nguồn và hệ thống:
+
+* **Mục đích:** Tự động kéo mã nguồn mới nhất về và chạy quá trình cập nhật cấu hình/cơ sở dữ liệu.
+
+```bash
+sudo ./vc_update.sh
+```
+
+---
+
+## 📂 Cấu Trúc Thư Mục Dự Án
+
+```text
+vc_vpn_web/
+│
+├── vc_install.sh
+├── vc_update.sh
+├── composer.json
+├── .env.example
+├── .gitignore
+├── .htaccess
+├── README.md
+│
+├── vc_config/
+│   ├── app.php
+│   ├── database.php
+│   ├── auth.php
+│   ├── security.php
+│   ├── payment.php
+│   ├── vpn.php
+│   └── mail.php
+│
+├── vc_database/
+│   ├── vc_vpn_web_commerce.sql
+│   ├── vc_migrations/
+│   │   ├── 001_initial_schema.sql
+│   │   ├── 002_indexes.sql
+│   │   └── 003_seed_permissions.sql
+│   │
+│   └── vc_seeds/
+│       ├── roles.php
+│       ├── permissions.php
+│       ├── settings.php
+│       └── plans.php
+│
+├── vc_public/
+│   ├── index.php
+│   ├── .htaccess
+│   │
+│   ├── vc_assets/
+│   │   ├── vc_css/
+│   │   │   ├── app.css
+│   │   │   ├── auth.css
+│   │   │   ├── user.css
+│   │   │   ├── admin.css
+│   │   │   └── staff.css
+│   │   │
+│   │   ├── vc_js/
+│   │   │   ├── app.js
+│   │   │   ├── auth.js
+│   │   │   ├── user.js
+│   │   │   ├── admin.js
+│   │   │   └── staff.js
+│   │   │
+│   │   ├── vc_images/
+│   │   │   ├── logo.svg
+│   │   │   ├── favicon.ico
+│   │   │   └── placeholder.svg
+│   │   │
+│   │   └── vc_fonts/
+│   │
+│   └── vc_uploads/
+│       ├── avatars/
+│       ├── invoices/
+│       └── attachments/
+│
+├── vc_app/
+│   │
+│   ├── vc_core/
+│   │   ├── Application.php
+│   │   ├── Controller.php
+│   │   ├── Model.php
+│   │   ├── Repository.php
+│   │   ├── Request.php
+│   │   ├── Response.php
+│   │   ├── Router.php
+│   │   ├── Session.php
+│   │   └── View.php
+│   │
+│   ├── vc_controllers/
+│   │   ├── AuthController.php
+│   │   ├── UserController.php
+│   │   ├── PlanController.php
+│   │   ├── OrderController.php
+│   │   ├── PaymentController.php
+│   │   ├── InvoiceController.php
+│   │   ├── SubscriptionController.php
+│   │   ├── DeviceController.php
+│   │   ├── NodeController.php
+│   │   ├── TrafficController.php
+│   │   ├── CouponController.php
+│   │   ├── ReferralController.php
+│   │   ├── SupportController.php
+│   │   ├── NotificationController.php
+│   │   └── SettingsController.php
+│   │
+│   ├── vc_models/
+│   │   ├── User.php
+│   │   ├── UserProfile.php
+│   │   ├── UserAddress.php
+│   │   ├── Role.php
+│   │   ├── Permission.php
+│   │   ├── VpnPlan.php
+│   │   ├── PlanPrice.php
+│   │   ├── PlanFeature.php
+│   │   ├── NodeGroup.php
+│   │   ├── VpnNode.php
+│   │   ├── Order.php
+│   │   ├── OrderItem.php
+│   │   ├── Payment.php
+│   │   ├── Invoice.php
+│   │   ├── Coupon.php
+│   │   ├── CouponUsage.php
+│   │   ├── Subscription.php
+│   │   ├── SubscriptionToken.php
+│   │   ├── SubscriptionAccess.php
+│   │   ├── SubscriptionEvent.php
+│   │   ├── SubscriptionTraffic.php
+│   │   ├── UserDevice.php
+│   │   ├── SubscriptionDevice.php
+│   │   ├── ReferralCode.php
+│   │   ├── Referral.php
+│   │   ├── Commission.php
+│   │   ├── SupportTicket.php
+│   │   ├── SupportMessage.php
+│   │   ├── Notification.php
+│   │   ├── Announcement.php
+│   │   ├── SystemSetting.php
+│   │   ├── AuditLog.php
+│   │   └── WebhookLog.php
+│   │
+│   ├── vc_repositories/
+│   │   ├── UserRepository.php
+│   │   ├── RoleRepository.php
+│   │   ├── PermissionRepository.php
+│   │   ├── PlanRepository.php
+│   │   ├── NodeRepository.php
+│   │   ├── OrderRepository.php
+│   │   ├── PaymentRepository.php
+│   │   ├── InvoiceRepository.php
+│   │   ├── CouponRepository.php
+│   │   ├── SubscriptionRepository.php
+│   │   ├── SubscriptionTokenRepository.php
+│   │   ├── SubscriptionAccessRepository.php
+│   │   ├── TrafficRepository.php
+│   │   ├── DeviceRepository.php
+│   │   ├── ReferralRepository.php
+│   │   ├── CommissionRepository.php
+│   │   ├── TicketRepository.php
+│   │   ├── NotificationRepository.php
+│   │   ├── SettingsRepository.php
+│   │   └── AuditRepository.php
+│   │
+│   ├── vc_services/
+│   │   │
+│   │   ├── vc_auth/
+│   │   │   ├── LoginService.php
+│   │   │   ├── RegisterService.php
+│   │   │   ├── LogoutService.php
+│   │   │   ├── PasswordService.php
+│   │   │   ├── EmailVerificationService.php
+│   │   │   └── TwoFactorService.php
+│   │   │
+│   │   ├── vc_users/
+│   │   │   ├── UserService.php
+│   │   │   ├── ProfileService.php
+│   │   │   ├── AddressService.php
+│   │   │   └── DeviceService.php
+│   │   │
+│   │   ├── vc_products/
+│   │   │   ├── PlanService.php
+│   │   │   ├── PriceService.php
+│   │   │   └── FeatureService.php
+│   │   │
+│   │   ├── vc_orders/
+│   │   │   ├── CartService.php
+│   │   │   ├── OrderService.php
+│   │   │   ├── OrderItemService.php
+│   │   │   └── InvoiceService.php
+│   │   │
+│   │   ├── vc_payments/
+│   │   │   ├── PaymentService.php
+│   │   │   ├── PaymentVerificationService.php
+│   │   │   ├── WebhookService.php
+│   │   │   └── RefundService.php
+│   │   │
+│   │   ├── vc_subscriptions/
+│   │   │   ├── SubscriptionService.php
+│   │   │   ├── SubscriptionCreateService.php
+│   │   │   ├── SubscriptionTokenService.php
+│   │   │   ├── SubscriptionAccessService.php
+│   │   │   ├── SubscriptionRenewalService.php
+│   │   │   ├── SubscriptionSuspendService.php
+│   │   │   ├── SubscriptionCancelService.php
+│   │   │   ├── SubscriptionTrafficService.php
+│   │   │   └── SubscriptionDeviceService.php
+│   │   │
+│   │   ├── vc_vpn/
+│   │   │   ├── NodeService.php
+│   │   │   ├── NodeGroupService.php
+│   │   │   ├── NodeHealthService.php
+│   │   │   ├── ProvisioningService.php
+│   │   │   ├── ConfigGeneratorService.php
+│   │   │   └── TrafficSyncService.php
+│   │   │
+│   │   ├── vc_affiliate/
+│   │   │   ├── ReferralService.php
+│   │   │   └── CommissionService.php
+│   │   │
+│   │   ├── vc_support/
+│   │   │   ├── TicketService.php
+│   │   │   └── MessageService.php
+│   │   │
+│   │   ├── vc_notifications/
+│   │   │   ├── NotificationService.php
+│   │   │   ├── EmailNotificationService.php
+│   │   │   └── AnnouncementService.php
+│   │   │
+│   │   └── vc_admin/
+│   │       ├── AdminDashboardService.php
+│   │       ├── StaffService.php
+│   │       ├── RoleService.php
+│   │       ├── PermissionService.php
+│   │       ├── SettingsService.php
+│   │       └── AuditService.php
+│   │
+│   ├── vc_middleware/
+│   │   ├── AuthMiddleware.php
+│   │   ├── GuestMiddleware.php
+│   │   ├── AdminMiddleware.php
+│   │   ├── StaffMiddleware.php
+│   │   ├── PermissionMiddleware.php
+│   │   ├── CsrfMiddleware.php
+│   │   └── RateLimitMiddleware.php
+│   │
+│   ├── vc_helpers/
+│   │   ├── Auth.php
+│   │   ├── Security.php
+│   │   ├── Password.php
+│   │   ├── Token.php
+│   │   ├── Validator.php
+│   │   ├── Url.php
+│   │   ├── Money.php
+│   │   ├── Date.php
+│   │   ├── Response.php
+│   │   └── Logger.php
+│   │
+│   └── vc_routes/
+│       ├── web.php
+│       ├── api.php
+│       ├── auth.php
+│       ├── user.php
+│       ├── admin.php
+│       ├── staff.php
+│       └── subscription.php
+│
+├── vc_views/
+│   │
+│   ├── vc_layouts/
+│   │   ├── main.php
+│   │   ├── auth.php
+│   │   ├── user.php
+│   │   ├── admin.php
+│   │   └── staff.php
+│   │
+│   ├── vc_components/
+│   │   ├── header.php
+│   │   ├── footer.php
+│   │   ├── navbar.php
+│   │   ├── sidebar.php
+│   │   ├── alert.php
+│   │   ├── modal.php
+│   │   ├── pagination.php
+│   │   └── table.php
+│   │
+│   ├── vc_public/
+│   │   ├── home.php
+│   │   ├── pricing.php
+│   │   ├── features.php
+│   │   ├── faq.php
+│   │   ├── contact.php
+│   │   ├── login.php
+│   │   ├── register.php
+│   │   ├── forgot-password.php
+│   │   ├── reset-password.php
+│   │   └── verify-email.php
+│   │
+│   ├── vc_user/
+│   │   ├── dashboard.php
+│   │   ├── profile.php
+│   │   ├── security.php
+│   │   ├── devices.php
+│   │   ├── notifications.php
+│   │   │
+│   │   ├── vc_orders/
+│   │   │   ├── index.php
+│   │   │   └── detail.php
+│   │   │
+│   │   ├── vc_subscriptions/
+│   │   │   ├── index.php
+│   │   │   ├── detail.php
+│   │   │   ├── token.php
+│   │   │   ├── qr.php
+│   │   │   ├── traffic.php
+│   │   │   └── devices.php
+│   │   │
+│   │   ├── vc_referral/
+│   │   │   ├── index.php
+│   │   │   └── commissions.php
+│   │   │
+│   │   └── vc_support/
+│   │       ├── index.php
+│   │       ├── create.php
+│   │       └── detail.php
+│   │
+│   ├── vc_admin/
+│   │   ├── dashboard.php
+│   │   │
+│   │   ├── vc_users/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   ├── edit.php
+│   │   │   ├── detail.php
+│   │   │   ├── subscriptions.php
+│   │   │   └── devices.php
+│   │   │
+│   │   ├── vc_staff/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   ├── edit.php
+│   │   │   └── detail.php
+│   │   │
+│   │   ├── vc_roles/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   └── edit.php
+│   │   │
+│   │   ├── vc_permissions/
+│   │   │   └── index.php
+│   │   │
+│   │   ├── vc_plans/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   ├── edit.php
+│   │   │   └── detail.php
+│   │   │
+│   │   ├── vc_prices/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   └── edit.php
+│   │   │
+│   │   ├── vc_nodes/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   ├── edit.php
+│   │   │   ├── detail.php
+│   │   │   └── health.php
+│   │   │
+│   │   ├── vc_node_groups/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   └── edit.php
+│   │   │
+│   │   ├── vc_orders/
+│   │   │   ├── index.php
+│   │   │   └── detail.php
+│   │   │
+│   │   ├── vc_payments/
+│   │   │   ├── index.php
+│   │   │   ├── detail.php
+│   │   │   └── refunds.php
+│   │   │
+│   │   ├── vc_invoices/
+│   │   │   ├── index.php
+│   │   │   ├── detail.php
+│   │   │   └── pdf.php
+│   │   │
+│   │   ├── vc_subscriptions/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   ├── detail.php
+│   │   │   ├── edit.php
+│   │   │   ├── suspend.php
+│   │   │   ├── renew.php
+│   │   │   ├── token.php
+│   │   │   └── traffic.php
+│   │   │
+│   │   ├── vc_traffic/
+│   │   │   ├── index.php
+│   │   │   ├── users.php
+│   │   │   ├── nodes.php
+│   │   │   └── subscriptions.php
+│   │   │
+│   │   ├── vc_coupons/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   ├── edit.php
+│   │   │   └── usages.php
+│   │   │
+│   │   ├── vc_affiliate/
+│   │   │   ├── index.php
+│   │   │   ├── referrals.php
+│   │   │   └── commissions.php
+│   │   │
+│   │   ├── vc_support/
+│   │   │   ├── index.php
+│   │   │   └── detail.php
+│   │   │
+│   │   ├── vc_announcements/
+│   │   │   ├── index.php
+│   │   │   ├── create.php
+│   │   │   └── edit.php
+│   │   │
+│   │   ├── vc_audit_logs/
+│   │   │   ├── index.php
+│   │   │   └── detail.php
+│   │   │
+│   │   └── vc_settings/
+│   │       ├── general.php
+│   │       ├── payment.php
+│   │       ├── vpn.php
+│   │       ├── email.php
+│   │       └── security.php
+│   │
+│   └── vc_staff/
+│       ├── dashboard.php
+│       ├── vc_customers/
+│       │   ├── index.php
+│       │   └── detail.php
+│       ├── vc_orders/
+│       │   ├── index.php
+│       │   └── detail.php
+│       ├── vc_subscriptions/
+│       │   ├── index.php
+│       │   └── detail.php
+│       ├── vc_payments/
+│       │   └── index.php
+│       ├── vc_support/
+│       │   ├── index.php
+│       │   └── detail.php
+│       ├── vc_nodes/
+│       │   └── index.php
+│       └── vc_traffic/
+│           └── index.php
+│
+├── vc_admin/
+│   ├── index.php
+│   ├── login.php
+│   ├── logout.php
+│   └── dashboard.php
+│
+├── vc_staff/
+│   ├── index.php
+│   ├── login.php
+│   ├── logout.php
+│   └── dashboard.php
+│
+├── vc_api/
+│   ├── index.php
+│   │
+│   ├── vc_auth/
+│   │   ├── login.php
+│   │   ├── register.php
+│   │   ├── logout.php
+│   │   └── refresh.php
+│   │
+│   ├── vc_users/
+│   │   ├── profile.php
+│   │   ├── devices.php
+│   │   └── notifications.php
+│   │
+│   ├── vc_plans/
+│   │   ├── index.php
+│   │   └── detail.php
+│   │
+│   ├── vc_orders/
+│   │   ├── create.php
+│   │   ├── index.php
+│   │   └── detail.php
+│   │
+│   ├── vc_payments/
+│   │   ├── create.php
+│   │   ├── status.php
+│   │   └── webhook.php
+│   │
+│   ├── vc_subscriptions/
+│   │   ├── index.php
+│   │   ├── detail.php
+│   │   ├── renew.php
+│   │   └── devices.php
+│   │
+│   └── vc_support/
+│       ├── tickets.php
+│       ├── create.php
+│       └── messages.php
+│
+├── vc_subscription/
+│   ├── index.php
+│   ├── sub.php
+│   ├── qr.php
+│   ├── config.php
+│   ├── clash.php
+│   ├── singbox.php
+│   └── xray.php
+│
+├── vc_integrations/
+│   │
+│   ├── vc_vpn/
+│   │   ├── VpnProviderInterface.php
+│   │   ├── SingBoxProvider.php
+│   │   ├── XrayProvider.php
+│   │   ├── WireGuardProvider.php
+│   │   └── VpnProviderFactory.php
+│   │
+│   ├── vc_payment/
+│   │   ├── PaymentProviderInterface.php
+│   │   ├── StripeProvider.php
+│   │   ├── PayPalProvider.php
+│   │   └── CryptoProvider.php
+│   │
+│   └── vc_mail/
+│       ├── MailProviderInterface.php
+│       └── SmtpProvider.php
+│
+├── vc_cron/
+│   ├── subscription_expiry.php
+│   ├── subscription_renewal.php
+│   ├── traffic_sync.php
+│   ├── node_health.php
+│   ├── payment_check.php
+│   ├── notification_queue.php
+│   ├── cleanup.php
+│   └── backup.php
+│
+├── vc_scripts/
+│   ├── install.php
+│   ├── migrate.php
+│   ├── seed.php
+│   ├── create_admin.php
+│   ├── create_staff.php
+│   ├── backup.php
+│   ├── restore.php
+│   ├── health_check.php
+│   └── clear_cache.php
+│
+├── vc_storage/
+│   ├── vc_cache/
+│   ├── vc_sessions/
+│   ├── vc_invoices/
+│   ├── vc_exports/
+│   └── vc_temp/
+│
+├── vc_logs/
+│   ├── vc_app/
+│   ├── vc_payment/
+│   ├── vc_vpn/
+│   ├── vc_security/
+│   └── vc_cron/
+│
+└── vc_docs/
+    ├── database.md
+    ├── installation.md
+    ├── aaPanel.md
+    ├── git-deployment.md
+    ├── admin.md
+    ├── staff.md
+    ├── api.md
+    ├── subscription.md
+    ├── vpn-integration.md
+    ├── payment-integration.md
+    └── permissions.md
+```
