@@ -20,13 +20,13 @@ if (file_exists(__DIR__ . '/../.env')) {
 }
 
 $dbHost = $_ENV['DB_HOST'] ?? '127.0.0.1';
-$dbPort = $_ENV['DB_PORT'] ?? '5432';
+$dbPort = $_ENV['DB_PORT'] ?? '3306';
 $dbName = $_ENV['DB_DATABASE'] ?? '';
 $dbUser = $_ENV['DB_USERNAME'] ?? '';
 $dbPass = $_ENV['DB_PASSWORD'] ?? '';
 
 try {
-    $dsn = "pgsql:host=$dbHost;port=$dbPort;dbname=$dbName";
+    $dsn = "mysql:host=$dbHost;port=$dbPort;dbname=$dbName;charset=utf8mb4";
     $pdo = new PDO($dsn, $dbUser, $dbPass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -47,17 +47,16 @@ if ($stmt->fetch()) {
 }
 
 $passwordHash = password_hash($password, PASSWORD_BCRYPT);
-$insert = $pdo->prepare("INSERT INTO users (email, username, password_hash, full_name, status, email_verified_at) VALUES (?, ?, ?, 'Staff Member', 'active', NOW()) RETURNING id");
+$insert = $pdo->prepare("INSERT INTO users (email, username, password_hash, full_name, status, email_verified_at) VALUES (?, ?, ?, 'Staff Member', 'active', NOW())");
 $insert->execute([$email, $username, $passwordHash]);
-$user = $insert->fetch();
-$userId = $user['id'];
+$userId = $pdo->lastInsertId();
 
 $roleStmt = $pdo->prepare("SELECT id FROM roles WHERE name = ?");
 $roleStmt->execute([$roleName]);
 $role = $roleStmt->fetch();
 
 if ($role) {
-    $assign = $pdo->prepare("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT DO NOTHING");
+    $assign = $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)");
     $assign->execute([$userId, $role['id']]);
     echo "Staff account created successfully (Username: $username, Email: $email, Role: $roleName).\n";
 } else {

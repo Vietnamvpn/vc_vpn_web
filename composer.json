@@ -6,7 +6,7 @@
     "require": {
         "php": ">=8.1",
         "ext-pdo": "*",
-        "ext-pgsql": "*",
+        "ext-pdo_mysql": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
         "vlucas/phpdotenv": "^5.5"

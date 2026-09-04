@@ -20,13 +20,13 @@ if (file_exists(__DIR__ . '/../.env')) {
 }
 
 $dbHost = $_ENV['DB_HOST'] ?? '127.0.0.1';
-$dbPort = $_ENV['DB_PORT'] ?? '5432';
+    $dbPort = $_ENV['DB_PORT'] ?? '3306';
 $dbName = $_ENV['DB_DATABASE'] ?? '';
 $dbUser = $_ENV['DB_USERNAME'] ?? '';
 $dbPass = $_ENV['DB_PASSWORD'] ?? '';
 
 try {
-    $pdo = new PDO("pgsql:host=$dbHost;port=$dbPort;dbname=$dbName", $dbUser, $dbPass, [
+    $pdo = new PDO("mysql:host=$dbHost;port=$dbPort;dbname=$dbName;charset=utf8mb4", $dbUser, $dbPass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);

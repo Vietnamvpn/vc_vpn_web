@@ -1,7 +1,7 @@
 <?php
 /**
  * vc_scripts/restore.php
- * Automated PostgreSQL database restoration script.
+ * Automated MySQL database restoration script.
  */
 
 if (php_sapi_name() !== 'cli') {
@@ -25,13 +25,13 @@ if (empty($backupFile) || !file_exists($backupFile)) {
 }
 
 $dbHost = $_ENV['DB_HOST'] ?? '127.0.0.1';
-$dbPort = $_ENV['DB_PORT'] ?? '5432';
+$dbPort = $_ENV['DB_PORT'] ?? '3306';
 $dbName = $_ENV['DB_DATABASE'] ?? '';
 $dbUser = $_ENV['DB_USERNAME'] ?? '';
 $dbPass = $_ENV['DB_PASSWORD'] ?? '';
 
 $command = sprintf(
-    "PGPASSWORD=%s pg_restore -h %s -p %s -U %s -d %s --clean --if-exists -v %s",
+    "MYSQL_PWD=%s mysql -h %s -P %s -u %s %s < %s",
     escapeshellarg($dbPass),
     escapeshellarg($dbHost),
     escapeshellarg($dbPort),
@@ -45,5 +45,5 @@ exec($command, $output, $resultCode);
 if ($resultCode === 0) {
     echo "Database restored successfully from $backupFile.\n";
 } else {
-    echo "Database restoration completed with warnings or errors (exit code $resultCode).\n";
+    echo "Database restoration failed with exit code $resultCode.\n";
 }

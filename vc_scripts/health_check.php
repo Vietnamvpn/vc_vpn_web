@@ -20,7 +20,7 @@ if (file_exists(__DIR__ . '/../.env')) {
 }
 
 $dbHost = $_ENV['DB_HOST'] ?? '127.0.0.1';
-$dbPort = $_ENV['DB_PORT'] ?? '5432';
+    $dbPort = $_ENV['DB_PORT'] ?? '3306';
 $dbName = $_ENV['DB_DATABASE'] ?? '';
 $dbUser = $_ENV['DB_USERNAME'] ?? '';
 $dbPass = $_ENV['DB_PASSWORD'] ?? '';
@@ -29,7 +29,7 @@ $status = true;
 
 // Check Database Connection
 try {
-    $dsn = "pgsql:host=$dbHost;port=$dbPort;dbname=$dbName";
+    $dsn = "mysql:host=$dbHost;port=$dbPort;dbname=$dbName;charset=utf8mb4";
     $pdo = new PDO($dsn, $dbUser, $dbPass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     echo "[OK] Database connection is healthy.\n";
 } catch (PDOException $e) {

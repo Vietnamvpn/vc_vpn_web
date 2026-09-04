@@ -1,7 +1,7 @@
 <?php
 /**
  * vc_scripts/backup.php
- * Automated PostgreSQL database and storage backup script.
+ * Automated MySQL database and storage backup script.
  */
 
 if (php_sapi_name() !== 'cli') {
@@ -20,7 +20,7 @@ if (file_exists(__DIR__ . '/../.env')) {
 }
 
 $dbHost = $_ENV['DB_HOST'] ?? '127.0.0.1';
-$dbPort = $_ENV['DB_PORT'] ?? '5432';
+$dbPort = $_ENV['DB_PORT'] ?? '3306';
 $dbName = $_ENV['DB_DATABASE'] ?? '';
 $dbUser = $_ENV['DB_USERNAME'] ?? '';
 $dbPass = $_ENV['DB_PASSWORD'] ?? '';
@@ -34,7 +34,7 @@ $filename = 'backup_' . $dbName . '_' . date('Y-m-d_H-i-s') . '.sql';
 $filepath = $backupDir . '/' . $filename;
 
 $command = sprintf(
-    "PGPASSWORD=%s pg_dump -h %s -p %s -U %s -d %s -F c -b -v -f %s",
+    "MYSQL_PWD=%s mysqldump --single-transaction --routines --triggers -h %s -P %s -u %s %s > %s",
     escapeshellarg($dbPass),
     escapeshellarg($dbHost),
     escapeshellarg($dbPort),

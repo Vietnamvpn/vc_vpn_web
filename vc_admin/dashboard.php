@@ -27,7 +27,7 @@ $username = htmlspecialchars($_SESSION['admin_username'] ?? 'Administrator');
 <body>
     <div class="dashboard-container">
         <h1>Welcome to Admin Dashboard, <?php echo $username; ?>!</h1>
-        <p>You have successfully logged into the <strong>vc_vpn_web</strong> management system. The core structure is active and operating on PostgreSQL.</p>
+        <p>You have successfully logged into the <strong>vc_vpn_web</strong> management system. The core structure is active and operating on MySQL.</p>
         <a href="<?php echo htmlspecialchars(vc_admin_url('logout'), ENT_QUOTES, 'UTF-8'); ?>" class="logout-btn">Logout</a>
     </div>
 </body>

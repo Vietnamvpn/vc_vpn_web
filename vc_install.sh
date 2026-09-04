@@ -12,7 +12,7 @@ echo "================================================="
 
 # 1. Thu thập thông tin
 read -r -p "Nhập tên miền (Domain - ví dụ: vpn.domain.com): " DOMAIN
-read -r -p "Nhập tên Database (PostgreSQL): " DB_NAME
+read -r -p "Nhập tên Database (MySQL): " DB_NAME
 read -r -p "Nhập User Database: " DB_USER
 read -r -s -p "Nhập Mật khẩu Database: " DB_PASS
 printf '\n'
@@ -32,8 +32,8 @@ if [[ -z "$DB_PASS" ]]; then
     exit 1
 fi
 
-if [[ ! -f "$APP_PATH/.env.example" || ! -f "$APP_PATH/vc_database/vc_vpn_web_commerce.sql" ]]; then
-    echo "Lỗi: thiếu .env.example hoặc file schema database."
+if [[ ! -f "$APP_PATH/.env.example" || ! -f "$APP_PATH/vc_database/vc_vpn_web_commerce_mysql.sql" ]]; then
+    echo "Lỗi: thiếu .env.example hoặc file schema MySQL."
     exit 1
 fi
 
@@ -45,14 +45,14 @@ escape_sed_replacement() {
     printf '%s' "$value"
 }
 
-# 2. Kiểm tra môi trường PostgreSQL
-if ! command -v psql &> /dev/null || ! command -v php &> /dev/null; then
-    echo "Lỗi: PostgreSQL chưa được cài đặt. Vui lòng cài đặt thông qua App Store của aaPanel."
+# 2. Kiểm tra môi trường MySQL/PHP
+if ! command -v mysql &> /dev/null || ! command -v php &> /dev/null; then
+    echo "Lỗi: MySQL hoặc PHP chưa được cài đặt trong aaPanel."
     exit 1
 fi
 
-if ! php -m | grep -qi '^pdo_pgsql$'; then
-    echo "Lỗi: PHP chưa bật extension pdo_pgsql."
+if ! php -m | grep -qi '^pdo_mysql$'; then
+    echo "Lỗi: PHP chưa bật extension pdo_mysql."
     exit 1
 fi
 
@@ -68,29 +68,31 @@ fi
 
 # 3. Tạo Database và User
 echo "Khởi tạo Database và User..."
-export VC_DB_PASS="$DB_PASS"
-sudo -u postgres env VC_DB_PASS="$VC_DB_PASS" psql -v ON_ERROR_STOP=1 \
-    -v db_name="$DB_NAME" -v db_user="$DB_USER" <<'SQL'
-\set ON_ERROR_STOP on
-\getenv db_pass VC_DB_PASS
-SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'db_user', :'db_pass')
-WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'db_user')\gexec
-SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'db_user', :'db_pass')\gexec
-SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'db_user')
-WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name')\gexec
+escape_mysql_literal() {
+    local value="$1"
+    value=${value//\\/\\\\}
+    value=${value//\'/\\\'}
+    printf '%s' "$value"
+}
+DB_PASS_SQL="$(escape_mysql_literal "$DB_PASS")"
+mysql -uroot --protocol=socket --batch --skip-column-names <<SQL
+CREATE DATABASE IF NOT EXISTS $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS_SQL';
+ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS_SQL';
+GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';
+FLUSH PRIVILEGES;
 SQL
-unset VC_DB_PASS
 
 # 4. Import cấu trúc SQL
 echo "Import cấu trúc cơ sở dữ liệu..."
-export PGPASSWORD="$DB_PASS"
-SCHEMA_EXISTS="$(psql -tAc "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'" -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME")"
+export MYSQL_PWD="$DB_PASS"
+SCHEMA_EXISTS="$(mysql -N -s -h 127.0.0.1 -u "$DB_USER" "$DB_NAME" -e "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'")"
 if [[ "$SCHEMA_EXISTS" == "1" ]]; then
     echo "Schema đã tồn tại, bỏ qua import để bảo toàn dữ liệu."
 else
-    psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -f "$APP_PATH/vc_database/vc_vpn_web_commerce.sql"
+    mysql --force=false -h 127.0.0.1 -u "$DB_USER" "$DB_NAME" < "$APP_PATH/vc_database/vc_vpn_web_commerce_mysql.sql"
 fi
-unset PGPASSWORD
+unset MYSQL_PWD
 
 # 5. Cấu hình file .env
 echo "Thiết lập cấu hình file .env..."
@@ -102,7 +104,7 @@ DB_NAME_ESCAPED="$(escape_sed_replacement "$DB_NAME")"
 DB_USER_ESCAPED="$(escape_sed_replacement "$DB_USER")"
 DB_PASS_ESCAPED="$(escape_sed_replacement "$DB_PASS")"
 DOMAIN_ESCAPED="$(escape_sed_replacement "$DOMAIN")"
-sed -i "s|^DB_DRIVER=.*|DB_DRIVER=pgsql|; s|^DB_HOST=.*|DB_HOST=127.0.0.1|; s|^DB_PORT=.*|DB_PORT=5432|; s|^DB_DATABASE=.*|DB_DATABASE=$DB_NAME_ESCAPED|; s|^DB_USERNAME=.*|DB_USERNAME=$DB_USER_ESCAPED|; s|^DB_PASSWORD=.*|DB_PASSWORD=$DB_PASS_ESCAPED|; s|^APP_URL=.*|APP_URL=https://$DOMAIN_ESCAPED|" "$APP_PATH/.env"
+sed -i "s|^DB_DRIVER=.*|DB_DRIVER=mysql|; s|^DB_HOST=.*|DB_HOST=127.0.0.1|; s|^DB_PORT=.*|DB_PORT=3306|; s|^DB_DATABASE=.*|DB_DATABASE=$DB_NAME_ESCAPED|; s|^DB_USERNAME=.*|DB_USERNAME=$DB_USER_ESCAPED|; s|^DB_PASSWORD=.*|DB_PASSWORD=$DB_PASS_ESCAPED|; s|^APP_URL=.*|APP_URL=https://$DOMAIN_ESCAPED|" "$APP_PATH/.env"
 unset DB_PASS
 
 # 6. Cài đặt thư viện qua Composer
