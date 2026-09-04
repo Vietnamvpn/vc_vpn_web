@@ -35,21 +35,24 @@ try {
     die("Database connection failed: " . $e->getMessage() . "\n");
 }
 
-$email = $argv[1] ?? 'admin@example.com';
-$username = $argv[2] ?? 'admin';
-$password = $argv[3] ?? 'Admin@123456';
+$email = getenv('VC_ADMIN_EMAIL') ?: ($argv[1] ?? 'admin@example.com');
+$username = getenv('VC_ADMIN_USERNAME') ?: ($argv[2] ?? 'admin');
+$password = getenv('VC_ADMIN_PASSWORD') ?: ($argv[3] ?? 'Admin@123456');
 
 $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
 $stmt->execute([$email, $username]);
-if ($stmt->fetch()) {
-    die("Error: User with this email or username already exists.\n");
-}
+$existingUser = $stmt->fetch();
 
-$passwordHash = password_hash($password, PASSWORD_BCRYPT);
-$insert = $pdo->prepare("INSERT INTO users (email, username, password_hash, full_name, status, email_verified_at) VALUES (?, ?, ?, 'Administrator', 'active', NOW()) RETURNING id");
-$insert->execute([$email, $username, $passwordHash]);
-$user = $insert->fetch();
-$userId = $user['id'];
+if ($existingUser) {
+    $userId = $existingUser['id'];
+    echo "User already exists; ensuring administrator role is assigned.\n";
+} else {
+    $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+    $insert = $pdo->prepare("INSERT INTO users (email, username, password_hash, full_name, status, email_verified_at) VALUES (?, ?, ?, 'Administrator', 'active', NOW()) RETURNING id");
+    $insert->execute([$email, $username, $passwordHash]);
+    $user = $insert->fetch();
+    $userId = $user['id'];
+}
 
 $roleStmt = $pdo->prepare("SELECT id FROM roles WHERE name = 'admin'");
 $roleStmt->execute();
@@ -58,7 +61,7 @@ $role = $roleStmt->fetch();
 if ($role) {
     $assign = $pdo->prepare("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT DO NOTHING");
     $assign->execute([$userId, $role['id']]);
-    echo "Administrator account created successfully (Username: $username, Email: $email).\n";
+    echo "Administrator account is ready (Username: $username, Email: $email).\n";
 } else {
     echo "User created, but 'admin' role was not found in the database.\n";
 }

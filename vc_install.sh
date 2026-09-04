@@ -11,52 +11,108 @@ echo " Đường dẫn hiện tại: $APP_PATH"
 echo "================================================="
 
 # 1. Thu thập thông tin
-read -p "Nhập tên miền (Domain - ví dụ: vpn.domain.com): " DOMAIN
-read -p "Nhập tên Database (PostgreSQL): " DB_NAME
-read -p "Nhập User Database: " DB_USER
-read -p "Nhập Mật khẩu Database: " DB_PASS
+read -r -p "Nhập tên miền (Domain - ví dụ: vpn.domain.com): " DOMAIN
+read -r -p "Nhập tên Database (PostgreSQL): " DB_NAME
+read -r -p "Nhập User Database: " DB_USER
+read -r -s -p "Nhập Mật khẩu Database: " DB_PASS
+printf '\n'
 
 if [[ ! "$DB_NAME" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ || ! "$DB_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
     echo "Lỗi: tên database và user chỉ được chứa chữ cái, số và dấu gạch dưới."
     exit 1
 fi
 
+if [[ -z "$DOMAIN" || ! "$DOMAIN" =~ ^[a-zA-Z0-9.-]+$ ]]; then
+    echo "Lỗi: domain không hợp lệ."
+    exit 1
+fi
+
+if [[ -z "$DB_PASS" ]]; then
+    echo "Lỗi: mật khẩu database không được để trống."
+    exit 1
+fi
+
+if [[ ! -f "$APP_PATH/.env.example" || ! -f "$APP_PATH/vc_database/vc_vpn_web_commerce.sql" ]]; then
+    echo "Lỗi: thiếu .env.example hoặc file schema database."
+    exit 1
+fi
+
+escape_sed_replacement() {
+    local value="$1"
+    value=${value//\\/\\\\}
+    value=${value//&/\\&}
+    value=${value//|/\\|}
+    printf '%s' "$value"
+}
+
 # 2. Kiểm tra môi trường PostgreSQL
-if ! command -v psql &> /dev/null; then
+if ! command -v psql &> /dev/null || ! command -v php &> /dev/null; then
     echo "Lỗi: PostgreSQL chưa được cài đặt. Vui lòng cài đặt thông qua App Store của aaPanel."
+    exit 1
+fi
+
+if ! php -m | grep -qi '^pdo_pgsql$'; then
+    echo "Lỗi: PHP chưa bật extension pdo_pgsql."
+    exit 1
+fi
+
+if ! id www >/dev/null 2>&1; then
+    echo "Lỗi: không tìm thấy user www của aaPanel."
+    exit 1
+fi
+
+if [[ "$(id -u)" -ne 0 ]]; then
+    echo "Lỗi: hãy chạy script bằng root: sudo ./vc_install.sh"
     exit 1
 fi
 
 # 3. Tạo Database và User
 echo "Khởi tạo Database và User..."
-sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';"
-sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
+export VC_DB_PASS="$DB_PASS"
+sudo -u postgres env VC_DB_PASS="$VC_DB_PASS" psql -v ON_ERROR_STOP=1 \
+    -v db_name="$DB_NAME" -v db_user="$DB_USER" <<'SQL'
+\set ON_ERROR_STOP on
+\getenv db_pass VC_DB_PASS
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'db_user', :'db_pass')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'db_user')\gexec
+SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'db_user', :'db_pass')\gexec
+SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'db_user')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name')\gexec
+SQL
+unset VC_DB_PASS
 
 # 4. Import cấu trúc SQL
 echo "Import cấu trúc cơ sở dữ liệu..."
 export PGPASSWORD="$DB_PASS"
-psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -f "$APP_PATH/vc_database/vc_vpn_web_commerce.sql"
+SCHEMA_EXISTS="$(psql -tAc "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'" -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME")"
+if [[ "$SCHEMA_EXISTS" == "1" ]]; then
+    echo "Schema đã tồn tại, bỏ qua import để bảo toàn dữ liệu."
+else
+    psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -f "$APP_PATH/vc_database/vc_vpn_web_commerce.sql"
+fi
 unset PGPASSWORD
 
 # 5. Cấu hình file .env
 echo "Thiết lập cấu hình file .env..."
-cp .env.example .env
-sed -i "s/DB_DRIVER=.*/DB_DRIVER=pgsql/" .env
-sed -i "s/DB_HOST=.*/DB_HOST=127.0.0.1/" .env
-sed -i "s/DB_PORT=.*/DB_PORT=5432/" .env
-sed -i "s/DB_DATABASE=.*/DB_DATABASE=$DB_NAME/" .env
-sed -i "s/DB_USERNAME=.*/DB_USERNAME=$DB_USER/" .env
-sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$DB_PASS/" .env
-sed -i "s/APP_URL=.*/APP_URL=https:\/\/$DOMAIN/" .env
+if [[ -f "$APP_PATH/.env" ]]; then
+    cp "$APP_PATH/.env" "$APP_PATH/.env.backup.$(date +%Y%m%d%H%M%S)"
+fi
+cp "$APP_PATH/.env.example" "$APP_PATH/.env"
+DB_NAME_ESCAPED="$(escape_sed_replacement "$DB_NAME")"
+DB_USER_ESCAPED="$(escape_sed_replacement "$DB_USER")"
+DB_PASS_ESCAPED="$(escape_sed_replacement "$DB_PASS")"
+DOMAIN_ESCAPED="$(escape_sed_replacement "$DOMAIN")"
+sed -i "s|^DB_DRIVER=.*|DB_DRIVER=pgsql|; s|^DB_HOST=.*|DB_HOST=127.0.0.1|; s|^DB_PORT=.*|DB_PORT=5432|; s|^DB_DATABASE=.*|DB_DATABASE=$DB_NAME_ESCAPED|; s|^DB_USERNAME=.*|DB_USERNAME=$DB_USER_ESCAPED|; s|^DB_PASSWORD=.*|DB_PASSWORD=$DB_PASS_ESCAPED|; s|^APP_URL=.*|APP_URL=https://$DOMAIN_ESCAPED|" "$APP_PATH/.env"
+unset DB_PASS
 
 # 6. Cài đặt thư viện qua Composer
 echo "Cài đặt thư viện bằng Composer..."
 if ! command -v composer &> /dev/null; then
-    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-    rm composer-setup.php
+    php -r "copy('https://getcomposer.org/installer', '$APP_PATH/composer-setup.php');"
+    php "$APP_PATH/composer-setup.php" --install-dir=/usr/local/bin --filename=composer
+    rm -f "$APP_PATH/composer-setup.php"
 fi
-composer install --no-dev --optimize-autoloader
+composer install --no-dev --optimize-autoloader --working-dir="$APP_PATH"
 
 # 7. Khởi tạo và thiết lập phân quyền các thư mục cần thiết
 echo "Thiết lập phân quyền bảo mật thư mục..."
@@ -64,15 +120,23 @@ mkdir -p "$APP_PATH/vc_storage/vc_cache" "$APP_PATH/vc_storage/vc_sessions" "$AP
 mkdir -p "$APP_PATH/vc_logs/vc_app" "$APP_PATH/vc_logs/vc_payment" "$APP_PATH/vc_logs/vc_vpn" "$APP_PATH/vc_logs/vc_security" "$APP_PATH/vc_logs/vc_cron"
 
 chown -R www:www "$APP_PATH"
-chmod -R 755 "$APP_PATH"
-chmod -R 775 "$APP_PATH/vc_storage"
-chmod -R 775 "$APP_PATH/vc_public/vc_uploads"
-chmod -R 775 "$APP_PATH/vc_logs"
+find "$APP_PATH" -type d -exec chmod 755 {} \;
+find "$APP_PATH" -type f -exec chmod 644 {} \;
+chmod 640 "$APP_PATH/.env"
+find "$APP_PATH" -maxdepth 1 -name '.env.backup.*' -exec chmod 600 {} \;
+chmod -R 775 "$APP_PATH/vc_storage" "$APP_PATH/vc_public/vc_uploads" "$APP_PATH/vc_logs"
 
 # 8. Tạo tài khoản quản trị sau khi import schema.
 if [ -f "$APP_PATH/vc_scripts/create_admin.php" ]; then
-    echo "Tạo tài khoản quản trị mặc định..."
-    sudo -u www php "$APP_PATH/vc_scripts/create_admin.php"
+    read -r -p "Email admin [admin@vc-vpn.local]: " ADMIN_EMAIL
+    read -r -p "Username admin [admin]: " ADMIN_USERNAME
+    read -r -s -p "Mật khẩu admin (bỏ trống dùng Admin@123456): " ADMIN_PASSWORD
+    printf '\n'
+    ADMIN_EMAIL="${ADMIN_EMAIL:-admin@vc-vpn.local}"
+    ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
+    ADMIN_PASSWORD="${ADMIN_PASSWORD:-Admin@123456}"
+    echo "Tạo tài khoản quản trị..."
+    sudo -u www env VC_ADMIN_EMAIL="$ADMIN_EMAIL" VC_ADMIN_USERNAME="$ADMIN_USERNAME" VC_ADMIN_PASSWORD="$ADMIN_PASSWORD" php "$APP_PATH/vc_scripts/create_admin.php"
 fi
 
 # 9. Thiết lập tự động hóa Cronjob đồng bộ với thư mục vc_cron
