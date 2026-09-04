@@ -1,6 +1,6 @@
 <?php
 /**
- * vc_app/Routes/web.php
+ * vc_app/vc_routes/web.php
  * Web routes definition for application and admin panel.
  */
 
@@ -16,10 +16,10 @@ switch ($uri) {
         break;
 
     case 'admin/login':
-        $controllerPath = APP_BASE_PATH . '/vc_app/Controllers/Admin/AuthController.php';
+        $controllerPath = APP_BASE_PATH . '/vc_app/vc_controllers/AuthController.php';
         if (file_exists($controllerPath)) {
             require_once $controllerPath;
-            $controller = new \VcApp\Controllers\Admin\AuthController();
+            $controller = new \VcApp\Controllers\AuthController();
             if ($method === 'POST') {
                 $controller->login();
             } else {
@@ -32,23 +32,21 @@ switch ($uri) {
         break;
 
     case 'admin/logout':
-        $controllerPath = APP_BASE_PATH . '/vc_app/Controllers/Admin/AuthController.php';
+        $controllerPath = APP_BASE_PATH . '/vc_app/vc_controllers/AuthController.php';
         if (file_exists($controllerPath)) {
             require_once $controllerPath;
-            $controller = new \VcApp\Controllers\Admin\AuthController();
+            $controller = new \VcApp\Controllers\AuthController();
             $controller->logout();
         }
         break;
 
     case 'admin/dashboard':
-        $controllerPath = APP_BASE_PATH . '/vc_app/Controllers/Admin/DashboardController.php';
-        if (file_exists($controllerPath)) {
-            require_once $controllerPath;
-            $controller = new \VcApp\Controllers\Admin\DashboardController();
-            $controller->index();
+        $dashboardPath = APP_BASE_PATH . '/vc_admin/dashboard.php';
+        if (file_exists($dashboardPath)) {
+            require_once $dashboardPath;
         } else {
             header("HTTP/1.0 404 Not Found");
-            echo "Admin DashboardController not found.";
+            echo "Admin Dashboard not found.";
         }
         break;
 
