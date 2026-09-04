@@ -6,30 +6,88 @@ Hệ thống quản lý dịch vụ VPN, tự động hóa cấp phát tài kho�
 
 ## 🚀 Hướng Dẫn Cài Đặt Theo Thứ Tự (Step-by-Step)
 
-Thực hiện lần lượt các bước dưới đây trên VPS / Server của bạn:
+### Bước 1: Cập nhật hệ thống VPS
+* **Mục đích:** Cập nhật các gói phần mềm và vá lỗi bảo mật mới nhất cho hệ điều hành VPS.
 
-### Bước 1: Di chuyển vào thư mục cài đặt
-* **Mục đích:** Truy cập đúng thư mục gốc của trang web trên Server (thay đổi đường dẫn theo đúng tên miền của bạn nếu cần).
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+---
+
+### Bước 2: Cài đặt aaPanel
+* **Mục đích:** Cài đặt bảng điều khiển aaPanel để quản lý Web Server, Database và tên miền.
+
+```bash
+URL=https://www.aapanel.com/script/install_panel_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO $URL ;else wget --no-check-certificate -O install_panel_en.sh $URL;fi;bash install_panel_en.sh ipssl
+```
+
+---
+
+### Bước 3: Cài đặt các ứng dụng bắt buộc trên aaPanel
+* **Mục đích:** Truy cập giao diện web aaPanel và chọn cài đặt các môi trường sau:
+  * **Apache 2.4** (Web Server)
+  * **MySQL 5.7** trở lên (Database)
+  * **PHP 8.4** (Môi trường chạy ứng dụng)
+  * **phpMyAdmin 5.2** (Giao diện quản lý Database)
+
+---
+
+### Bước 4: Cấu hình Môi Trường & Bảo Mật PHP (Trên aaPanel)
+* **Mục đích:** Thiết lập đầy đủ thư viện và bảo mật cho PHP 8.4 ngay sau khi cài đặt thành công.
+
+1. **Bật các PHP Extensions bắt buộc:** Vào **aaPanel > App Store > PHP 8.4 > Install extensions** và bật:
+   * **pdo_mysql**: Kết nối và làm việc với cơ sở dữ liệu MySQL / MariaDB.
+   * **openssl**: Mã hóa dữ liệu, mã hóa token và thông tin đăng nhập.
+   * **mbstring**: Xử lý chuỗi văn bản đa ngôn ngữ (chuẩn UTF-8).
+   * **curl**: Gửi yêu cầu API đến các Node VPN và cổng thanh toán.
+   * **json**: Đọc/ghi file cấu hình JSON và dữ liệu JSONB.
+   * **fileinfo**: Kiểm tra định dạng an toàn của tệp tải lên (Avatar, chứng từ).
+
+2. **Cấu hình bảo mật trong file `php.ini`:** Vào **aaPanel > App Store > PHP 8.4 > Configuration / Disabled functions**:
+   * **Tắt các hàm nguy hiểm (Disabled functions):**
+     ```ini
+     disable_functions = exec, system, passthru, shell_exec, proc_open, popen
+     ```
+   * **Tắt hiển thị lỗi trực tiếp (display_errors):**
+     ```ini
+     display_errors = Off
+     ```
+   * **Ẩn phiên bản PHP trên Header (expose_php):**
+     ```ini
+     expose_php = Off
+     ```
+
+---
+
+### Bước 5: Di chuyển vào thư mục cài đặt
+* **Mục đích:** Truy cập đúng thư mục gốc của trang web trên Server.
 
 ```bash
 cd /www/wwwroot/vpn2s.linksub24h.com
 ```
 
-### Bước 2: Tải mã nguồn từ GitHub
-* **Mục đích:** Clone toàn bộ mã nguồn của dự án về thư mục hiện tại.
+---
+
+### Bước 6: Tải mã nguồn từ GitHub
+* **Mục đích:** Clone toàn bộ mã nguồn của dự án về thư mục hiện tại (Lưu ý dấu chấm ` .` ở cuối lệnh).
 
 ```bash
 git clone https://github.com/Vietnamvpn/vc_vpn_web.git .
 ```
 
-### Bước 3: Phân quyền file cài đặt
-* **Mục đích:** Cấp quyền thực thi (`+x`) cho file script `vc_install.sh` để có thể chạy trực tiếp.
+---
+
+### Bước 7: Phân quyền file cài đặt
+* **Mục đích:** Cấp quyền thực thi (`+x`) cho file script `vc_install.sh`.
 
 ```bash
 chmod +x vc_install.sh
 ```
 
-### Bước 4: Chạy Script cài đặt tự động
+---
+
+### Bước 8: Chạy Script cài đặt tự động
 * **Mục đích:** Khởi chạy quá trình tự động thiết lập hệ thống, cơ sở dữ liệu và cấu hình ban đầu.
 
 ```bash
@@ -65,33 +123,15 @@ Tạo hoặc chỉnh sửa tệp `.htaccess` với nội dung sau:
 
 ---
 
-## ⚙️ Cấu Hình Môi Trường & Bảo Mật PHP
+## 🔄 Hướng Dẫn Cập Nhật Hệ Thống
 
-### 1. Bật các PHP Extensions bắt buộc
-* **Mục đích:** Đảm bảo PHP có đủ các thư viện phụ thuộc để vận hành toàn bộ chức năng.
+Khi có phiên bản mới trên GitHub, chạy lệnh sau để cập nhật mã nguồn và hệ thống:
 
-* **`pdo_mysql`**: Kết nối và làm việc với cơ sở dữ liệu MySQL / MariaDB.
-* **`openssl`**: Mã hóa dữ liệu, mã hóa token và thông tin đăng nhập.
-* **`mbstring`**: Xử lý chuỗi văn bản đa ngôn ngữ (chuẩn UTF-8).
-* **`curl`**: Gửi yêu cầu API đến các Node VPN và cổng thanh toán.
-* **`json`**: Đọc/ghi file cấu hình JSON và dữ liệu JSONB.
-* **`fileinfo`**: Kiểm tra định dạng an toàn của tệp tải lên (Avatar, chứng từ).
+* **Mục đích:** Tự động kéo mã nguồn mới nhất về và chạy quá trình cập nhật cấu hình/cơ sở dữ liệu.
 
-### 2. Cấu hình bảo mật trong file `php.ini`
-* **Mục đích:** Vô hiệu hóa các hàm nguy hiểm và ẩn thông tin hệ thống khỏi hacker.
-
-* **Tắt các hàm nguy hiểm:**
-  ```ini
-  disable_functions = exec, system, passthru, shell_exec, proc_open, popen
-  ```
-* **Tắt hiển thị lỗi trực tiếp (tránh lộ thông tin nguồn khi xảy ra sự cố):**
-  ```ini
-  display_errors = Off
-  ```
-* **Ẩn phiên bản PHP trên Header:**
-  ```ini
-  expose_php = Off
-  ```
+```bash
+sudo ./vc_update.sh
+```
 
 ---
 
