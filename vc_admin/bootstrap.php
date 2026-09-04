@@ -80,10 +80,22 @@ function vc_admin_is_authenticated(): bool
         && isset($_SESSION['admin_user_id']);
 }
 
+function vc_admin_url(string $path = ''): string
+{
+    $path = trim($path, '/');
+
+    return '/admin' . ($path === '' ? '' : '/' . $path);
+}
+
+function vc_admin_hash_url(string $path = 'login'): string
+{
+    return '/#/' . trim($path, '/');
+}
+
 function vc_admin_require_authentication(): void
 {
     if (!vc_admin_is_authenticated()) {
-        header('Location: login.php');
+        header('Location: ' . vc_admin_url('login'));
         exit;
     }
 }

@@ -17,5 +17,5 @@ if (ini_get('session.use_cookies')) {
 }
 
 session_destroy();
-header('Location: login.php');
+header('Location: ' . vc_admin_url('login'));
 exit;

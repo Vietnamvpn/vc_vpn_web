@@ -1,0 +1,8 @@
+Options -Indexes
+
+RewriteEngine On
+
+RewriteRule ^admin/?$ vc_admin/index.php [L]
+RewriteRule ^admin/login/?$ vc_admin/login.php [L]
+RewriteRule ^admin/dashboard/?$ vc_admin/dashboard.php [L]
+RewriteRule ^admin/logout/?$ vc_admin/logout.php [L]

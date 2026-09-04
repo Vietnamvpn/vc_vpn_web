@@ -29,7 +29,7 @@ if (file_exists(APP_BASE_PATH . '/.env')) {
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $requestMethod = $_SERVER['REQUEST_METHOD'];
 
-$routesFile = APP_BASE_PATH . '/vc_app/Routes/web.php';
+$routesFile = APP_BASE_PATH . '/vc_app/vc_routes/web.php';
 if (file_exists($routesFile)) {
     require_once $routesFile;
 } else {
