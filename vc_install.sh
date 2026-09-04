@@ -28,7 +28,7 @@ printf '\n\n'
 
 # Kiểm tra tính hợp lệ dữ liệu đầu vào
 if [[ ! "$DB_NAME" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ || ! "$DB_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
-    echo -e "${RED}Lỗi: Tên database và user chỉ được chứa chữ cái, số và dấu gạch dưới.__{NC}"
+    echo -e "${RED}Lỗi: Tên database và user chỉ được chứa chữ cái, số và dấu gạch dưới.${NC}"
     exit 1
 fi
 
@@ -116,6 +116,7 @@ echo -e " ${GREEN}✔ Hoàn tất cài đặt thư viện PHP.${NC}"
 echo -e "${CYAN}[5/7] Thiết lập phân quyền bảo mật thư mục...${NC}"
 mkdir -p "$APP_PATH/vc_storage/vc_cache" "$APP_PATH/vc_storage/vc_sessions" "$APP_PATH/vc_storage/vc_invoices" "$APP_PATH/vc_storage/vc_exports" "$APP_PATH/vc_storage/vc_temp"
 mkdir -p "$APP_PATH/vc_logs/vc_app" "$APP_PATH/vc_logs/vc_payment" "$APP_PATH/vc_logs/vc_vpn" "$APP_PATH/vc_logs/vc_security" "$APP_PATH/vc_logs/vc_cron"
+mkdir -p "$APP_PATH/vc_public/vc_uploads/avatars" "$APP_PATH/vc_public/vc_uploads/invoices" "$APP_PATH/vc_public/vc_uploads/attachments"
 
 chown -R www:www "$APP_PATH"
 find "$APP_PATH" -type d -exec chmod 755 {} \;
