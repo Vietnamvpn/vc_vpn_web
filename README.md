@@ -1,3 +1,11 @@
+
+#các lệnh chạy như sau :
+cd /www/wwwroot/vpn2s.linksub24h.com
+git clone https://github.com/Vietnamvpn/vc_vpn_web.git .
+chmod +x vc_install.sh
+./vc_install.sh
+---
+## 📂 Cấu trúc Thư mục Dự án
 vc_vpn_web/
 │
 ├── vc_install.sh
