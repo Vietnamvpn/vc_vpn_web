@@ -12,41 +12,12 @@ $method = $requestMethod;
 switch ($uri) {
     case '':
     case 'index.php':
-        echo "Welcome to VC VPN Web. <a href='/admin/login'>Go to Admin Login</a>";
-        break;
-
-    case 'admin/login':
-        $controllerPath = APP_BASE_PATH . '/vc_app/vc_controllers/AuthController.php';
-        if (file_exists($controllerPath)) {
-            require_once $controllerPath;
-            $controller = new \VcApp\Controllers\AuthController();
-            if ($method === 'POST') {
-                $controller->login();
-            } else {
-                $controller->showLoginForm();
-            }
+        $homePath = APP_BASE_PATH . '/vc_views/vc_public/home.php';
+        if (file_exists($homePath)) {
+            require_once $homePath;
         } else {
             header("HTTP/1.0 404 Not Found");
-            echo "Admin AuthController not found.";
-        }
-        break;
-
-    case 'admin/logout':
-        $controllerPath = APP_BASE_PATH . '/vc_app/vc_controllers/AuthController.php';
-        if (file_exists($controllerPath)) {
-            require_once $controllerPath;
-            $controller = new \VcApp\Controllers\AuthController();
-            $controller->logout();
-        }
-        break;
-
-    case 'admin/dashboard':
-        $dashboardPath = APP_BASE_PATH . '/vc_admin/dashboard.php';
-        if (file_exists($dashboardPath)) {
-            require_once $dashboardPath;
-        } else {
-            header("HTTP/1.0 404 Not Found");
-            echo "Admin Dashboard not found.";
+            echo "Home page not found.";
         }
         break;
 

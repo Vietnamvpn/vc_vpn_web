@@ -49,7 +49,7 @@ URL=https://www.aapanel.com/script/install_panel_en.sh && if [ -f /usr/bin/curl 
      ```ini
      disable_functions = exec, system, passthru, shell_exec, proc_open, popen
      ```
-   * **Tắt hiển thị lỗi trực tiếp (display_errors):**
+   * **Tắt hiển thị lỗi trực tiếp (Configuration > display_errors):**
      ```ini
      display_errors = Off
      ```
