@@ -1,8 +1,10 @@
 Options -Indexes
 
-RewriteEngine On
+<IfModule mod_rewrite.c>
+    RewriteEngine On
 
-RewriteRule ^admin/?$ vc_admin/index.php [L]
-RewriteRule ^admin/login/?$ vc_admin/login.php [L]
-RewriteRule ^admin/dashboard/?$ vc_admin/dashboard.php [L]
-RewriteRule ^admin/logout/?$ vc_admin/logout.php [L]
+    # Chuyển hướng mọi request không phải tệp/thư mục thực tế vào điểm vào duy nhất vc_public/index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ vc_public/index.php?url=$1 [QSA,L]
+</IfModule>

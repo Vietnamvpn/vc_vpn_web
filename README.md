@@ -179,7 +179,7 @@ vc_vpn_web/
 │       └── plans.php
 │
 ├── vc_public/
-│   ├── index.php
+│   ├── index.php 
 │   ├── .htaccess
 │   │
 │   ├── vc_assets/
@@ -297,7 +297,6 @@ vc_vpn_web/
 │   │   └── AuditRepository.php
 │   │
 │   ├── vc_services/
-│   │   │
 │   │   ├── vc_auth/
 │   │   │   ├── LoginService.php
 │   │   │   ├── RegisterService.php
@@ -305,30 +304,25 @@ vc_vpn_web/
 │   │   │   ├── PasswordService.php
 │   │   │   ├── EmailVerificationService.php
 │   │   │   └── TwoFactorService.php
-│   │   │
 │   │   ├── vc_users/
 │   │   │   ├── UserService.php
 │   │   │   ├── ProfileService.php
 │   │   │   ├── AddressService.php
 │   │   │   └── DeviceService.php
-│   │   │
 │   │   ├── vc_products/
 │   │   │   ├── PlanService.php
 │   │   │   ├── PriceService.php
 │   │   │   └── FeatureService.php
-│   │   │
 │   │   ├── vc_orders/
 │   │   │   ├── CartService.php
 │   │   │   ├── OrderService.php
 │   │   │   ├── OrderItemService.php
 │   │   │   └── InvoiceService.php
-│   │   │
 │   │   ├── vc_payments/
 │   │   │   ├── PaymentService.php
 │   │   │   ├── PaymentVerificationService.php
 │   │   │   ├── WebhookService.php
 │   │   │   └── RefundService.php
-│   │   │
 │   │   ├── vc_subscriptions/
 │   │   │   ├── SubscriptionService.php
 │   │   │   ├── SubscriptionCreateService.php
@@ -339,7 +333,6 @@ vc_vpn_web/
 │   │   │   ├── SubscriptionCancelService.php
 │   │   │   ├── SubscriptionTrafficService.php
 │   │   │   └── SubscriptionDeviceService.php
-│   │   │
 │   │   ├── vc_vpn/
 │   │   │   ├── NodeService.php
 │   │   │   ├── NodeGroupService.php
@@ -347,20 +340,16 @@ vc_vpn_web/
 │   │   │   ├── ProvisioningService.php
 │   │   │   ├── ConfigGeneratorService.php
 │   │   │   └── TrafficSyncService.php
-│   │   │
 │   │   ├── vc_affiliate/
 │   │   │   ├── ReferralService.php
 │   │   │   └── CommissionService.php
-│   │   │
 │   │   ├── vc_support/
 │   │   │   ├── TicketService.php
 │   │   │   └── MessageService.php
-│   │   │
 │   │   ├── vc_notifications/
 │   │   │   ├── NotificationService.php
 │   │   │   ├── EmailNotificationService.php
 │   │   │   └── AnnouncementService.php
-│   │   │
 │   │   └── vc_admin/
 │   │       ├── AdminDashboardService.php
 │   │       ├── StaffService.php
@@ -400,14 +389,12 @@ vc_vpn_web/
 │       └── subscription.php
 │
 ├── vc_views/
-│   │
 │   ├── vc_layouts/
 │   │   ├── main.php
 │   │   ├── auth.php
 │   │   ├── user.php
 │   │   ├── admin.php
 │   │   └── staff.php
-│   │
 │   ├── vc_components/
 │   │   ├── header.php
 │   │   ├── footer.php
@@ -417,7 +404,6 @@ vc_vpn_web/
 │   │   ├── modal.php
 │   │   ├── pagination.php
 │   │   └── table.php
-│   │
 │   ├── vc_public/
 │   │   ├── home.php
 │   │   ├── pricing.php
@@ -429,18 +415,15 @@ vc_vpn_web/
 │   │   ├── forgot-password.php
 │   │   ├── reset-password.php
 │   │   └── verify-email.php
-│   │
 │   ├── vc_user/
 │   │   ├── dashboard.php
 │   │   ├── profile.php
 │   │   ├── security.php
 │   │   ├── devices.php
 │   │   ├── notifications.php
-│   │   │
 │   │   ├── vc_orders/
 │   │   │   ├── index.php
 │   │   │   └── detail.php
-│   │   │
 │   │   ├── vc_subscriptions/
 │   │   │   ├── index.php
 │   │   │   ├── detail.php
@@ -448,19 +431,15 @@ vc_vpn_web/
 │   │   │   ├── qr.php
 │   │   │   ├── traffic.php
 │   │   │   └── devices.php
-│   │   │
 │   │   ├── vc_referral/
 │   │   │   ├── index.php
 │   │   │   └── commissions.php
-│   │   │
 │   │   └── vc_support/
 │   │       ├── index.php
 │   │       ├── create.php
 │   │       └── detail.php
-│   │
 │   ├── vc_admin/
 │   │   ├── dashboard.php
-│   │   │
 │   │   ├── vc_users/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
@@ -468,58 +447,47 @@ vc_vpn_web/
 │   │   │   ├── detail.php
 │   │   │   ├── subscriptions.php
 │   │   │   └── devices.php
-│   │   │
 │   │   ├── vc_staff/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
 │   │   │   ├── edit.php
 │   │   │   └── detail.php
-│   │   │
 │   │   ├── vc_roles/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
 │   │   │   └── edit.php
-│   │   │
 │   │   ├── vc_permissions/
 │   │   │   └── index.php
-│   │   │
 │   │   ├── vc_plans/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
 │   │   │   ├── edit.php
 │   │   │   └── detail.php
-│   │   │
 │   │   ├── vc_prices/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
 │   │   │   └── edit.php
-│   │   │
 │   │   ├── vc_nodes/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
 │   │   │   ├── edit.php
 │   │   │   ├── detail.php
 │   │   │   └── health.php
-│   │   │
 │   │   ├── vc_node_groups/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
 │   │   │   └── edit.php
-│   │   │
 │   │   ├── vc_orders/
 │   │   │   ├── index.php
 │   │   │   └── detail.php
-│   │   │
 │   │   ├── vc_payments/
 │   │   │   ├── index.php
 │   │   │   ├── detail.php
 │   │   │   └── refunds.php
-│   │   │
 │   │   ├── vc_invoices/
 │   │   │   ├── index.php
 │   │   │   ├── detail.php
 │   │   │   └── pdf.php
-│   │   │
 │   │   ├── vc_subscriptions/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
@@ -529,44 +497,36 @@ vc_vpn_web/
 │   │   │   ├── renew.php
 │   │   │   ├── token.php
 │   │   │   └── traffic.php
-│   │   │
 │   │   ├── vc_traffic/
 │   │   │   ├── index.php
 │   │   │   ├── users.php
 │   │   │   ├── nodes.php
 │   │   │   └── subscriptions.php
-│   │   │
 │   │   ├── vc_coupons/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
 │   │   │   ├── edit.php
 │   │   │   └── usages.php
-│   │   │
 │   │   ├── vc_affiliate/
 │   │   │   ├── index.php
 │   │   │   ├── referrals.php
 │   │   │   └── commissions.php
-│   │   │
 │   │   ├── vc_support/
 │   │   │   ├── index.php
 │   │   │   └── detail.php
-│   │   │
 │   │   ├── vc_announcements/
 │   │   │   ├── index.php
 │   │   │   ├── create.php
 │   │   │   └── edit.php
-│   │   │
 │   │   ├── vc_audit_logs/
 │   │   │   ├── index.php
 │   │   │   └── detail.php
-│   │   │
 │   │   └── vc_settings/
 │   │       ├── general.php
 │   │       ├── payment.php
 │   │       ├── vpn.php
 │   │       ├── email.php
 │   │       └── security.php
-│   │
 │   └── vc_staff/
 │       ├── dashboard.php
 │       ├── vc_customers/
@@ -588,81 +548,18 @@ vc_vpn_web/
 │       └── vc_traffic/
 │           └── index.php
 │
-├── vc_admin/
-│   ├── index.php
-│   ├── login.php
-│   ├── logout.php
-│   └── dashboard.php
-│
-├── vc_staff/
-│   ├── index.php
-│   ├── login.php
-│   ├── logout.php
-│   └── dashboard.php
-│
-├── vc_api/
-│   ├── index.php
-│   │
-│   ├── vc_auth/
-│   │   ├── login.php
-│   │   ├── register.php
-│   │   ├── logout.php
-│   │   └── refresh.php
-│   │
-│   ├── vc_users/
-│   │   ├── profile.php
-│   │   ├── devices.php
-│   │   └── notifications.php
-│   │
-│   ├── vc_plans/
-│   │   ├── index.php
-│   │   └── detail.php
-│   │
-│   ├── vc_orders/
-│   │   ├── create.php
-│   │   ├── index.php
-│   │   └── detail.php
-│   │
-│   ├── vc_payments/
-│   │   ├── create.php
-│   │   ├── status.php
-│   │   └── webhook.php
-│   │
-│   ├── vc_subscriptions/
-│   │   ├── index.php
-│   │   ├── detail.php
-│   │   ├── renew.php
-│   │   └── devices.php
-│   │
-│   └── vc_support/
-│       ├── tickets.php
-│       ├── create.php
-│       └── messages.php
-│
-├── vc_subscription/
-│   ├── index.php
-│   ├── sub.php
-│   ├── qr.php
-│   ├── config.php
-│   ├── clash.php
-│   ├── singbox.php
-│   └── xray.php
-│
 ├── vc_integrations/
-│   │
 │   ├── vc_vpn/
 │   │   ├── VpnProviderInterface.php
 │   │   ├── SingBoxProvider.php
 │   │   ├── XrayProvider.php
 │   │   ├── WireGuardProvider.php
 │   │   └── VpnProviderFactory.php
-│   │
 │   ├── vc_payment/
 │   │   ├── PaymentProviderInterface.php
 │   │   ├── StripeProvider.php
 │   │   ├── PayPalProvider.php
 │   │   └── CryptoProvider.php
-│   │
 │   └── vc_mail/
 │       ├── MailProviderInterface.php
 │       └── SmtpProvider.php

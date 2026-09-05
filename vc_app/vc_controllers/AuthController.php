@@ -1,67 +1,84 @@
 <?php
-namespace VcApp\Controllers;
 
-class AuthController
+namespace VcApp\VcControllers;
+
+use VcCore\Controller;
+use VcCore\Application;
+
+class AuthController extends Controller
 {
+    /**
+     * Hiển thị giao diện đăng nhập quản trị / hệ thống
+     */
     public function showLoginForm()
     {
-        $loginFile = APP_BASE_PATH . '/vc_admin/login.php';
-        if (file_exists($loginFile)) {
-            require_once $loginFile;
-        } else {
-            echo "Admin login view not found.";
+        // Nếu đã đăng nhập rồi thì chuyển hướng thẳng vào dashboard hoặc trang chủ
+        if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
+            $this->redirect('/admin/dashboard');
         }
+
+        $this->view('vc_public/login');
     }
 
-    public function login()
+    /**
+     * Xử lý dữ liệu đăng nhập
+     */
+    public function processLogin()
     {
-        $username = $_POST['username'] ?? '';
-        $password = $_POST['password'] ?? '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $username = trim($_POST['username'] ?? '');
+            $password = $_POST['password'] ?? '';
 
-        if (empty($username) || empty($password)) {
-            $_SESSION['error'] = 'Vui lòng nhập đầy đủ tài khoản và mật khẩu.';
-            header('Location: /admin/login');
-            exit;
-        }
-
-        $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-        $db   = $_ENV['DB_DATABASE'] ?? '';
-        $user = $_ENV['DB_USERNAME'] ?? '';
-        $pass = $_ENV['DB_PASSWORD'] ?? '';
-        $port = $_ENV['DB_PORT'] ?? '3306';
-
-        try {
-            $pdo = new \PDO("mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4", $user, $pass, [
-                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-                \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-            ]);
-
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1");
-            $stmt->execute([$username, $username]);
-            $userRecord = $stmt->fetch();
-
-            if ($userRecord && password_verify($password, $userRecord['password'])) {
-                $_SESSION['admin_logged_in'] = true;
-                $_SESSION['admin_user_id'] = $userRecord['id'];
-                $_SESSION['admin_username'] = $userRecord['username'];
-                header('Location: /admin/dashboard');
-                exit;
-            } else {
-                $_SESSION['error'] = 'Tài khoản hoặc mật khẩu không chính xác.';
-                header('Location: /admin/login');
-                exit;
+            if (empty($username) || empty($password)) {
+                $this->view('vc_public/login', ['error' => 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.']);
+                return;
             }
-        } catch (\Exception $e) {
-            $_SESSION['error'] = 'Lỗi hệ thống cơ sở dữ liệu.';
-            header('Location: /admin/login');
-            exit;
+
+            $app = Application::getInstance();
+            $db = $app->getDb();
+
+            try {
+                // Truy vấn bảo mật chống SQL Injection bằng Prepared Statement
+                $stmt = $db->prepare("SELECT * FROM vc_admins WHERE username = :username LIMIT 1");
+                $stmt->execute(['username' => $username]);
+                $admin = $stmt->fetch();
+
+                if ($admin && password_verify($password, $admin['password'])) {
+                    // Đăng nhập thành công, chống tấn công Session Fixation
+                    session_regenerate_id(true);
+                    $_SESSION['admin_logged_in'] = true;
+                    $_SESSION['admin_id'] = $admin['id'];
+                    $_SESSION['admin_username'] = $admin['username'];
+
+                    $this->redirect('/admin/dashboard');
+                } else {
+                    $this->view('vc_public/login', ['error' => 'Tên đăng nhập hoặc mật khẩu không chính xác.']);
+                }
+            } catch (\PDOException $e) {
+                error_log('Login Error: ' . $e->getMessage());
+                $this->view('vc_public/login', ['error' => 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.']);
+            }
+        } else {
+            $this->redirect('/admin/login');
         }
     }
 
+    /**
+     * Xử lý đăng xuất tài khoản
+     */
     public function logout()
     {
-        unset($_SESSION['admin_logged_in'], $_SESSION['admin_user_id'], $_SESSION['admin_username']);
-        header('Location: /admin/login');
-        exit;
+        // Hủy bỏ toàn bộ session an toàn
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        session_destroy();
+
+        $this->redirect('/admin/login');
     }
 }
