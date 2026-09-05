@@ -1,7 +1,7 @@
 <?php
 /**
  * vc_scripts/migrate.php
- * Handles database migrations update for PostgreSQL 14+[cite: 1].
+ * Handles database migrations update for MySQL/PostgreSQL.
  */
 
 if (php_sapi_name() !== 'cli') {
@@ -20,7 +20,7 @@ if (file_exists(__DIR__ . '/../.env')) {
 }
 
 $dbHost = $_ENV['DB_HOST'] ?? '127.0.0.1';
-    $dbPort = $_ENV['DB_PORT'] ?? '3306';
+$dbPort = $_ENV['DB_PORT'] ?? '3306';
 $dbName = $_ENV['DB_DATABASE'] ?? '';
 $dbUser = $_ENV['DB_USERNAME'] ?? '';
 $dbPass = $_ENV['DB_PASSWORD'] ?? '';
@@ -31,7 +31,7 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
-    echo "Successfully connected to PostgreSQL database.\n";
+    echo "Successfully connected to MySQL database.\n";
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage() . "\n");
 }
@@ -43,6 +43,10 @@ if (is_dir($migrationsPath)) {
     foreach ($files as $file) {
         echo "Executing migration: " . basename($file) . "...\n";
         $sql = file_get_contents($file);
+        
+        // Tự động loại bỏ các lệnh PostgreSQL không tương thích với MySQL
+        $sql = preg_replace('/CREATE\s+EXTENSION\s+IF\s+NOT\s+EXISTS\s+pgcrypto\s*;/i', '', $sql);
+
         try {
             $pdo->exec($sql);
         } catch (PDOException $e) {
