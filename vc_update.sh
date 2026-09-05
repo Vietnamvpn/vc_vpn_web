@@ -51,6 +51,13 @@ fi
 # 3. Cập nhật cơ sở dữ liệu (Migration)
 echo -e "${CYAN}[3/5] Cập nhật cấu trúc cơ sở dữ liệu...${NC}"
 if [ -f "$APP_PATH/vc_scripts/migrate.php" ]; then
+    # Nếu hệ thống dùng MySQL, tự động loại bỏ các file migration chứa cú pháp PostgreSQL (như pgcrypto)
+    if [ -f "$APP_PATH/.env" ] && grep -q "DB_DRIVER=mysql" "$APP_PATH/.env"; then
+        find "$APP_PATH" -type f -name "*.sql" -exec grep -l "pgcrypto" {} \; 2>/dev/null | while read -r pg_file; do
+            rm -f "$pg_file"
+        done
+    fi
+
     if id www >/dev/null 2>&1; then
         sudo -u www php "$APP_PATH/vc_scripts/migrate.php"
     else
