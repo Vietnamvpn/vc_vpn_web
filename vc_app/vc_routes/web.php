@@ -1,4 +1,3 @@
-<?>
 <?php
 /**
  * vc_app/vc_routes/web.php
