@@ -10,6 +10,6 @@ $router->get('/admin/login', 'AuthController@showLoginForm');
 $router->post('/admin/login', 'AuthController@processLogin');
 $router->get('/admin/logout', 'AuthController@logout');
 
-// Định tuyến được bảo vệ bởi AdminMiddleware
-$router->get('/admin', 'AdminDashboardController@index')->middleware('AdminMiddleware');
-$router->get('/admin/dashboard', 'AdminDashboardController@index')->middleware('AdminMiddleware');
+// Định tuyến được bảo vệ bởi AdminMiddleware (GỌI MIDDLEWARE TRƯỚC)
+$router->middleware('AdminMiddleware')->get('/admin', 'AdminDashboardController@index');
+$router->middleware('AdminMiddleware')->get('/admin/dashboard', 'AdminDashboardController@index');

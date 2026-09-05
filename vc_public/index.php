@@ -29,7 +29,14 @@ spl_autoload_register(function ($class) {
     
     if (strncmp($appPrefix, $class, strlen($appPrefix)) === 0) {
         $relativeClass = substr($class, strlen($appPrefix));
-        $file = $appDir . str_replace('\\', '/', $relativeClass) . '.php';
+        $parts = explode('\\', $relativeClass);
+        
+        // Tự động chuyển đổi tên thư mục từ PascalCase (ví dụ: VcControllers) sang chuẩn Linux (vc_controllers)
+        if (isset($parts[0])) {
+            $parts[0] = strtolower(preg_replace('/^Vc([A-Z])/', 'vc_$1', $parts[0]));
+        }
+        
+        $file = $appDir . implode('/', $parts) . '.php';
         if (file_exists($file)) {
             require_once $file;
             return;
