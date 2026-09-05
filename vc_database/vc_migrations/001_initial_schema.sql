@@ -318,7 +318,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 CREATE TABLE IF NOT EXISTS subscription_tokens (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     subscription_id BIGINT UNSIGNED NOT NULL UNIQUE,
-    token_hash TEXT NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
     token_prefix VARCHAR(30) NULL,
     status ENUM('active','disabled','revoked') NOT NULL DEFAULT 'active',
     expires_at DATETIME NULL,
