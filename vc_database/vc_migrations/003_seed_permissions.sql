@@ -1,9 +1,7 @@
--- Migration 003: Seed Default Roles & Permissions
-
-BEGIN;
+-- Migration 003: Seed Default Roles & Permissions for MySQL
 
 -- DEFAULT ROLES
-INSERT INTO roles (name, description) VALUES
+INSERT IGNORE INTO roles (name, description) VALUES
 ('super_admin', 'Full system access'),
 ('admin', 'Administrative access'),
 ('manager', 'Management access'),
@@ -11,11 +9,10 @@ INSERT INTO roles (name, description) VALUES
 ('sales', 'Sales staff'),
 ('finance', 'Finance and payment staff'),
 ('technical', 'VPN technical staff'),
-('customer', 'Normal customer')
-ON CONFLICT (name) DO NOTHING;
+('customer', 'Normal customer');
 
 -- DEFAULT PERMISSIONS
-INSERT INTO permissions (name, description) VALUES
+INSERT IGNORE INTO permissions (name, description) VALUES
 ('dashboard.view','View dashboard'),
 
 ('users.view','View users'),
@@ -67,18 +64,16 @@ INSERT INTO permissions (name, description) VALUES
 ('settings.view','View settings'),
 ('settings.manage','Manage settings'),
 
-('audit_logs.view','View audit logs')
-ON CONFLICT (name) DO NOTHING;
+('audit_logs.view','View audit logs');
 
 -- Grant every permission to super_admin
-INSERT INTO role_permissions (role_id, permission_id)
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r CROSS JOIN permissions p
-WHERE r.name = 'super_admin'
-ON CONFLICT DO NOTHING;
+WHERE r.name = 'super_admin';
 
 -- Customer baseline permissions
-INSERT INTO role_permissions (role_id, permission_id)
+INSERT IGNORE INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r
 JOIN permissions p ON p.name IN (
@@ -90,7 +85,4 @@ JOIN permissions p ON p.name IN (
     'support.view',
     'support.manage'
 )
-WHERE r.name = 'customer'
-ON CONFLICT DO NOTHING;
-
-COMMIT;
+WHERE r.name = 'customer';

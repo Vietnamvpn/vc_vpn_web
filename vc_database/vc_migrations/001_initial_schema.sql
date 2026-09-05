@@ -1,550 +1,537 @@
--- Migration 001: Initial Schema
--- Create extensions, core tables, triggers and views
-
-BEGIN;
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Migration 001: Initial Schema for MySQL
 
 -- =========================
 -- USERS & PROFILES
 -- =========================
 
-CREATE TABLE users (
-    id BIGSERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE,
-    username VARCHAR(100) UNIQUE,
-    password_hash TEXT NOT NULL,
-    full_name VARCHAR(255),
-    phone VARCHAR(50),
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('pending','active','inactive','suspended','banned')),
-    email_verified_at TIMESTAMPTZ,
-    last_login_at TIMESTAMPTZ,
-    last_login_ip INET,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
-);
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NULL UNIQUE,
+    username VARCHAR(100) NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NULL,
+    phone VARCHAR(50) NULL,
+    status ENUM('pending','active','inactive','suspended','banned') NOT NULL DEFAULT 'active',
+    email_verified_at DATETIME NULL,
+    last_login_at DATETIME NULL,
+    last_login_ip VARCHAR(45) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE user_profiles (
-    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    avatar_url TEXT,
-    timezone VARCHAR(100) DEFAULT 'UTC',
-    locale VARCHAR(20) DEFAULT 'en',
-    company_name VARCHAR(255),
-    tax_id VARCHAR(100),
-    notes TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+CREATE TABLE IF NOT EXISTS user_profiles (
+    user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+    avatar_url TEXT NULL,
+    timezone VARCHAR(100) NOT NULL DEFAULT 'UTC',
+    locale VARCHAR(20) NOT NULL DEFAULT 'en',
+    company_name VARCHAR(255) NULL,
+    tax_id VARCHAR(100) NULL,
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE user_addresses (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS user_addresses (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
     type VARCHAR(30) NOT NULL DEFAULT 'billing',
-    recipient_name VARCHAR(255),
-    phone VARCHAR(50),
-    address_line1 TEXT,
-    address_line2 TEXT,
-    city VARCHAR(100),
-    state VARCHAR(100),
-    postal_code VARCHAR(30),
-    country_code CHAR(2),
-    is_default BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    recipient_name VARCHAR(255) NULL,
+    phone VARCHAR(50) NULL,
+    address_line1 TEXT NULL,
+    address_line2 TEXT NULL,
+    city VARCHAR(100) NULL,
+    state VARCHAR(100) NULL,
+    postal_code VARCHAR(30) NULL,
+    country_code CHAR(2) NULL,
+    is_default TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_addresses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- RBAC
 -- =========================
 
-CREATE TABLE roles (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) UNIQUE NOT NULL,
-    description TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+CREATE TABLE IF NOT EXISTS roles (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE permissions (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(150) UNIQUE NOT NULL,
-    description TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+CREATE TABLE IF NOT EXISTS permissions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL UNIQUE,
+    description TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE role_permissions (
-    role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_id BIGINT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-    PRIMARY KEY (role_id, permission_id)
-);
+CREATE TABLE IF NOT EXISTS role_permissions (
+    role_id BIGINT UNSIGNED NOT NULL,
+    permission_id BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (role_id, permission_id),
+    CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE user_roles (
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, role_id)
-);
+CREATE TABLE IF NOT EXISTS user_roles (
+    user_id BIGINT UNSIGNED NOT NULL,
+    role_id BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (user_id, role_id),
+    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- VPN PRODUCTS / PLANS
 -- =========================
 
-CREATE TABLE vpn_plans (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS vpn_plans (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    description TEXT,
-    duration_days INTEGER NOT NULL CHECK (duration_days > 0),
-    traffic_limit_bytes BIGINT CHECK (traffic_limit_bytes IS NULL OR traffic_limit_bytes >= 0),
-    device_limit INTEGER NOT NULL DEFAULT 1 CHECK (device_limit > 0),
-    speed_limit_mbps INTEGER CHECK (speed_limit_mbps IS NULL OR speed_limit_mbps > 0),
-    max_connections INTEGER NOT NULL DEFAULT 1 CHECK (max_connections > 0),
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('draft','active','inactive','archived')),
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT NULL,
+    duration_days INT NOT NULL,
+    traffic_limit_bytes BIGINT NULL,
+    device_limit INT NOT NULL DEFAULT 1,
+    speed_limit_mbps INT NULL,
+    max_connections INT NOT NULL DEFAULT 1,
+    status ENUM('draft','active','inactive','archived') NOT NULL DEFAULT 'active',
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE plan_prices (
-    id BIGSERIAL PRIMARY KEY,
-    plan_id BIGINT NOT NULL REFERENCES vpn_plans(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS plan_prices (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    plan_id BIGINT UNSIGNED NOT NULL,
     currency VARCHAR(10) NOT NULL,
-    amount NUMERIC(18,2) NOT NULL CHECK (amount >= 0),
-    billing_period VARCHAR(30),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    amount DECIMAL(18,2) NOT NULL,
+    billing_period VARCHAR(30) NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_plan_prices_plan FOREIGN KEY (plan_id) REFERENCES vpn_plans(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE plan_features (
-    id BIGSERIAL PRIMARY KEY,
-    plan_id BIGINT NOT NULL REFERENCES vpn_plans(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS plan_features (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    plan_id BIGINT UNSIGNED NOT NULL,
     feature_key VARCHAR(100) NOT NULL,
-    feature_value TEXT,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    UNIQUE(plan_id, feature_key)
-);
+    feature_value TEXT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_plan_feature (plan_id, feature_key),
+    CONSTRAINT fk_plan_features_plan FOREIGN KEY (plan_id) REFERENCES vpn_plans(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- VPN NODES
 -- =========================
 
-CREATE TABLE node_groups (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS node_groups (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    description TEXT,
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active','inactive')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT NULL,
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE vpn_nodes (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS vpn_nodes (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    hostname VARCHAR(255),
-    ip_address INET,
-    country VARCHAR(100),
-    city VARCHAR(100),
-    provider VARCHAR(255),
-    port INTEGER CHECK (port IS NULL OR port BETWEEN 1 AND 65535),
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('pending','active','maintenance','offline','disabled')),
-    capacity INTEGER NOT NULL DEFAULT 0 CHECK (capacity >= 0),
-    current_users INTEGER NOT NULL DEFAULT 0 CHECK (current_users >= 0),
-    traffic_limit_bytes BIGINT CHECK (traffic_limit_bytes IS NULL OR traffic_limit_bytes >= 0),
-    api_url TEXT,
-    api_key_encrypted TEXT,
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    last_health_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    hostname VARCHAR(255) NULL,
+    ip_address VARCHAR(45) NULL,
+    country VARCHAR(100) NULL,
+    city VARCHAR(100) NULL,
+    provider VARCHAR(255) NULL,
+    port INT NULL,
+    status ENUM('pending','active','maintenance','offline','disabled') NOT NULL DEFAULT 'active',
+    capacity INT NOT NULL DEFAULT 0,
+    current_users INT NOT NULL DEFAULT 0,
+    traffic_limit_bytes BIGINT NULL,
+    api_url TEXT NULL,
+    api_key_encrypted TEXT NULL,
+    metadata JSON NOT NULL,
+    last_health_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE node_group_members (
-    node_group_id BIGINT NOT NULL REFERENCES node_groups(id) ON DELETE CASCADE,
-    node_id BIGINT NOT NULL REFERENCES vpn_nodes(id) ON DELETE CASCADE,
-    priority INTEGER NOT NULL DEFAULT 100,
-    PRIMARY KEY (node_group_id, node_id)
-);
+CREATE TABLE IF NOT EXISTS node_group_members (
+    node_group_id BIGINT UNSIGNED NOT NULL,
+    node_id BIGINT UNSIGNED NOT NULL,
+    priority INT NOT NULL DEFAULT 100,
+    PRIMARY KEY (node_group_id, node_id),
+    CONSTRAINT fk_node_group_members_group FOREIGN KEY (node_group_id) REFERENCES node_groups(id) ON DELETE CASCADE,
+    CONSTRAINT fk_node_group_members_node FOREIGN KEY (node_id) REFERENCES vpn_nodes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE plan_node_groups (
-    plan_id BIGINT NOT NULL REFERENCES vpn_plans(id) ON DELETE CASCADE,
-    node_group_id BIGINT NOT NULL REFERENCES node_groups(id) ON DELETE CASCADE,
-    PRIMARY KEY (plan_id, node_group_id)
-);
+CREATE TABLE IF NOT EXISTS plan_node_groups (
+    plan_id BIGINT UNSIGNED NOT NULL,
+    node_group_id BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (plan_id, node_group_id),
+    CONSTRAINT fk_plan_node_groups_plan FOREIGN KEY (plan_id) REFERENCES vpn_plans(id) ON DELETE CASCADE,
+    CONSTRAINT fk_plan_node_groups_group FOREIGN KEY (node_group_id) REFERENCES node_groups(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE node_health_logs (
-    id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT NOT NULL REFERENCES vpn_nodes(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS node_health_logs (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    node_id BIGINT UNSIGNED NOT NULL,
     status VARCHAR(30) NOT NULL,
-    latency_ms INTEGER,
-    cpu_percent NUMERIC(5,2),
-    memory_percent NUMERIC(5,2),
-    active_connections INTEGER,
-    checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    latency_ms INT NULL,
+    cpu_percent DECIMAL(5,2) NULL,
+    memory_percent DECIMAL(5,2) NULL,
+    active_connections INT NULL,
+    checked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_node_health_logs_node FOREIGN KEY (node_id) REFERENCES vpn_nodes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
--- ORDERS & PAYMENTS
+-- ORDERS & FINANCE
 -- =========================
 
-CREATE TABLE coupons (
-    id BIGSERIAL PRIMARY KEY,
-    code VARCHAR(100) UNIQUE NOT NULL,
-    discount_type VARCHAR(30) NOT NULL
-        CHECK (discount_type IN ('percent','fixed')),
-    discount_value NUMERIC(18,2) NOT NULL CHECK (discount_value >= 0),
-    max_uses INTEGER CHECK (max_uses IS NULL OR max_uses > 0),
-    used_count INTEGER NOT NULL DEFAULT 0 CHECK (used_count >= 0),
-    min_order_amount NUMERIC(18,2) CHECK (min_order_amount IS NULL OR min_order_amount >= 0),
-    starts_at TIMESTAMPTZ,
-    expires_at TIMESTAMPTZ,
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active','inactive','expired')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+CREATE TABLE IF NOT EXISTS coupons (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    discount_type ENUM('percent','fixed') NOT NULL,
+    discount_value DECIMAL(18,2) NOT NULL,
+    max_uses INT NULL,
+    used_count INT NOT NULL DEFAULT 0,
+    min_order_amount DECIMAL(18,2) NULL,
+    starts_at DATETIME NULL,
+    expires_at DATETIME NULL,
+    status ENUM('active','inactive','expired') NOT NULL DEFAULT 'active',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE orders (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    order_number VARCHAR(50) UNIQUE NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending','paid','processing','completed','cancelled','refunded','failed')),
+CREATE TABLE IF NOT EXISTS orders (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    order_number VARCHAR(50) NOT NULL UNIQUE,
+    status ENUM('pending','paid','processing','completed','cancelled','refunded','failed') NOT NULL DEFAULT 'pending',
     currency VARCHAR(10) NOT NULL,
-    subtotal NUMERIC(18,2) NOT NULL DEFAULT 0 CHECK (subtotal >= 0),
-    discount NUMERIC(18,2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
-    tax NUMERIC(18,2) NOT NULL DEFAULT 0 CHECK (tax >= 0),
-    total NUMERIC(18,2) NOT NULL DEFAULT 0 CHECK (total >= 0),
-    coupon_id BIGINT REFERENCES coupons(id) ON DELETE SET NULL,
-    notes TEXT,
-    paid_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    subtotal DECIMAL(18,2) NOT NULL DEFAULT 0,
+    discount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    tax DECIMAL(18,2) NOT NULL DEFAULT 0,
+    total DECIMAL(18,2) NOT NULL DEFAULT 0,
+    coupon_id BIGINT UNSIGNED NULL,
+    notes TEXT NULL,
+    paid_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_orders_coupon FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE order_items (
-    id BIGSERIAL PRIMARY KEY,
-    order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    plan_id BIGINT NOT NULL REFERENCES vpn_plans(id),
-    quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
-    unit_price NUMERIC(18,2) NOT NULL CHECK (unit_price >= 0),
-    total_price NUMERIC(18,2) NOT NULL CHECK (total_price >= 0),
-    plan_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+CREATE TABLE IF NOT EXISTS order_items (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
+    plan_id BIGINT UNSIGNED NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    unit_price DECIMAL(18,2) NOT NULL,
+    total_price DECIMAL(18,2) NOT NULL,
+    plan_snapshot JSON NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_order_items_plan FOREIGN KEY (plan_id) REFERENCES vpn_plans(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE payments (
-    id BIGSERIAL PRIMARY KEY,
-    order_id BIGINT NOT NULL REFERENCES orders(id),
+CREATE TABLE IF NOT EXISTS payments (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
     payment_method VARCHAR(50) NOT NULL,
-    provider VARCHAR(100),
-    transaction_id VARCHAR(255),
-    amount NUMERIC(18,2) NOT NULL CHECK (amount >= 0),
+    provider VARCHAR(100) NULL,
+    transaction_id VARCHAR(255) NULL,
+    amount DECIMAL(18,2) NOT NULL,
     currency VARCHAR(10) NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending','processing','paid','failed','cancelled','refunded','partially_refunded')),
-    provider_response JSONB,
-    paid_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(provider, transaction_id)
-);
+    status ENUM('pending','processing','paid','failed','cancelled','refunded','partially_refunded') NOT NULL DEFAULT 'pending',
+    provider_response JSON NULL,
+    paid_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_payment_provider_transaction (provider, transaction_id),
+    CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES orders(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE invoices (
-    id BIGSERIAL PRIMARY KEY,
-    order_id BIGINT UNIQUE NOT NULL REFERENCES orders(id),
-    invoice_number VARCHAR(100) UNIQUE NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'issued'
-        CHECK (status IN ('draft','issued','paid','void','refunded')),
+CREATE TABLE IF NOT EXISTS invoices (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL UNIQUE,
+    invoice_number VARCHAR(100) NOT NULL UNIQUE,
+    status ENUM('draft','issued','paid','void','refunded') NOT NULL DEFAULT 'issued',
     currency VARCHAR(10) NOT NULL,
-    subtotal NUMERIC(18,2) NOT NULL DEFAULT 0,
-    discount NUMERIC(18,2) NOT NULL DEFAULT 0,
-    tax NUMERIC(18,2) NOT NULL DEFAULT 0,
-    total NUMERIC(18,2) NOT NULL DEFAULT 0,
-    issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    due_at TIMESTAMPTZ,
-    paid_at TIMESTAMPTZ
-);
+    subtotal DECIMAL(18,2) NOT NULL DEFAULT 0,
+    discount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    tax DECIMAL(18,2) NOT NULL DEFAULT 0,
+    total DECIMAL(18,2) NOT NULL DEFAULT 0,
+    issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    due_at DATETIME NULL,
+    paid_at DATETIME NULL,
+    CONSTRAINT fk_invoices_order FOREIGN KEY (order_id) REFERENCES orders(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE coupon_usages (
-    id BIGSERIAL PRIMARY KEY,
-    coupon_id BIGINT NOT NULL REFERENCES coupons(id),
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    order_id BIGINT NOT NULL REFERENCES orders(id),
-    discount_amount NUMERIC(18,2) NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(coupon_id, order_id)
-);
+CREATE TABLE IF NOT EXISTS coupon_usages (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    coupon_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    order_id BIGINT UNSIGNED NOT NULL,
+    discount_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_coupon_order (coupon_id, order_id),
+    CONSTRAINT fk_coupon_usages_coupon FOREIGN KEY (coupon_id) REFERENCES coupons(id),
+    CONSTRAINT fk_coupon_usages_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_coupon_usages_order FOREIGN KEY (order_id) REFERENCES orders(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- SUBSCRIPTIONS
 -- =========================
 
-CREATE TABLE subscriptions (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    plan_id BIGINT NOT NULL REFERENCES vpn_plans(id),
-    order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
-    order_item_id BIGINT REFERENCES order_items(id) ON DELETE SET NULL,
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    plan_id BIGINT UNSIGNED NOT NULL,
+    order_id BIGINT UNSIGNED NULL,
+    order_item_id BIGINT UNSIGNED NULL,
+    subscription_uuid CHAR(36) NOT NULL UNIQUE,
+    status ENUM('pending','active','expired','suspended','cancelled','revoked') NOT NULL DEFAULT 'active',
+    started_at DATETIME NOT NULL,
+    expires_at DATETIME NOT NULL,
+    traffic_limit_bytes BIGINT NULL,
+    traffic_used_bytes BIGINT NOT NULL DEFAULT 0,
+    device_limit INT NOT NULL DEFAULT 1,
+    max_connections INT NOT NULL DEFAULT 1,
+    auto_renew TINYINT(1) NOT NULL DEFAULT 0,
+    plan_snapshot JSON NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    cancelled_at DATETIME NULL,
+    CONSTRAINT fk_subscriptions_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_subscriptions_plan FOREIGN KEY (plan_id) REFERENCES vpn_plans(id),
+    CONSTRAINT fk_subscriptions_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
+    CONSTRAINT fk_subscriptions_order_item FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-    subscription_uuid UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+CREATE TABLE IF NOT EXISTS subscription_tokens (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    subscription_id BIGINT UNSIGNED NOT NULL UNIQUE,
+    token_hash TEXT NOT NULL,
+    token_prefix VARCHAR(30) NULL,
+    status ENUM('active','disabled','revoked') NOT NULL DEFAULT 'active',
+    expires_at DATETIME NULL,
+    last_used_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_subscription_tokens_sub FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('pending','active','expired','suspended','cancelled','revoked')),
-
-    started_at TIMESTAMPTZ NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL,
-
-    traffic_limit_bytes BIGINT CHECK (traffic_limit_bytes IS NULL OR traffic_limit_bytes >= 0),
-    traffic_used_bytes BIGINT NOT NULL DEFAULT 0 CHECK (traffic_used_bytes >= 0),
-
-    device_limit INTEGER NOT NULL DEFAULT 1 CHECK (device_limit > 0),
-    max_connections INTEGER NOT NULL DEFAULT 1 CHECK (max_connections > 0),
-
-    auto_renew BOOLEAN NOT NULL DEFAULT FALSE,
-
-    plan_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    cancelled_at TIMESTAMPTZ,
-
-    CHECK (expires_at > started_at)
-);
-
-CREATE TABLE subscription_tokens (
-    id BIGSERIAL PRIMARY KEY,
-    subscription_id BIGINT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
-    token_hash TEXT NOT NULL UNIQUE,
-    token_prefix VARCHAR(30),
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active','disabled','revoked')),
-    expires_at TIMESTAMPTZ,
-    last_used_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(subscription_id)
-);
-
-CREATE TABLE subscription_access (
-    id BIGSERIAL PRIMARY KEY,
-    subscription_id BIGINT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS subscription_access (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    subscription_id BIGINT UNSIGNED NOT NULL,
     protocol VARCHAR(50) NOT NULL,
-    node_id BIGINT REFERENCES vpn_nodes(id) ON DELETE SET NULL,
-    external_client_id VARCHAR(255),
-    config_data JSONB NOT NULL DEFAULT '{}'::jsonb,
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active','disabled','revoked')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    node_id BIGINT UNSIGNED NULL,
+    external_client_id VARCHAR(255) NULL,
+    config_data JSON NOT NULL,
+    status ENUM('active','disabled','revoked') NOT NULL DEFAULT 'active',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_subscription_access_sub FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+    CONSTRAINT fk_subscription_access_node FOREIGN KEY (node_id) REFERENCES vpn_nodes(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE subscription_events (
-    id BIGSERIAL PRIMARY KEY,
-    subscription_id BIGINT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS subscription_events (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    subscription_id BIGINT UNSIGNED NOT NULL,
     event_type VARCHAR(50) NOT NULL,
-    old_status VARCHAR(30),
-    new_status VARCHAR(30),
-    old_expires_at TIMESTAMPTZ,
-    new_expires_at TIMESTAMPTZ,
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    old_status VARCHAR(30) NULL,
+    new_status VARCHAR(30) NULL,
+    old_expires_at DATETIME NULL,
+    new_expires_at DATETIME NULL,
+    metadata JSON NOT NULL,
+    created_by BIGINT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_subscription_events_sub FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+    CONSTRAINT fk_subscription_events_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE subscription_traffic (
-    id BIGSERIAL PRIMARY KEY,
-    subscription_id BIGINT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS subscription_traffic (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    subscription_id BIGINT UNSIGNED NOT NULL,
     date DATE NOT NULL,
-    upload_bytes BIGINT NOT NULL DEFAULT 0 CHECK (upload_bytes >= 0),
-    download_bytes BIGINT NOT NULL DEFAULT 0 CHECK (download_bytes >= 0),
-    total_bytes BIGINT NOT NULL DEFAULT 0 CHECK (total_bytes >= 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(subscription_id, date)
-);
+    upload_bytes BIGINT NOT NULL DEFAULT 0,
+    download_bytes BIGINT NOT NULL DEFAULT 0,
+    total_bytes BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_sub_traffic_date (subscription_id, date),
+    CONSTRAINT fk_subscription_traffic_sub FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- DEVICES
 -- =========================
 
-CREATE TABLE user_devices (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS user_devices (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
     device_id VARCHAR(255) NOT NULL,
-    device_name VARCHAR(255),
-    platform VARCHAR(50),
-    app_version VARCHAR(50),
-    last_ip INET,
-    last_seen_at TIMESTAMPTZ,
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active','disabled','blocked')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(user_id, device_id)
-);
+    device_name VARCHAR(255) NULL,
+    platform VARCHAR(50) NULL,
+    app_version VARCHAR(50) NULL,
+    last_ip VARCHAR(45) NULL,
+    last_seen_at DATETIME NULL,
+    status ENUM('active','disabled','blocked') NOT NULL DEFAULT 'active',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_user_device (user_id, device_id),
+    CONSTRAINT fk_user_devices_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE subscription_devices (
-    subscription_id BIGINT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
-    device_id BIGINT NOT NULL REFERENCES user_devices(id) ON DELETE CASCADE,
-    first_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY(subscription_id, device_id)
-);
+CREATE TABLE IF NOT EXISTS subscription_devices (
+    subscription_id BIGINT UNSIGNED NOT NULL,
+    device_id BIGINT UNSIGNED NOT NULL,
+    first_used_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (subscription_id, device_id),
+    CONSTRAINT fk_subscription_devices_sub FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+    CONSTRAINT fk_subscription_devices_device FOREIGN KEY (device_id) REFERENCES user_devices(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- REFERRAL / AFFILIATE
 -- =========================
 
-CREATE TABLE referral_codes (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    code VARCHAR(100) UNIQUE NOT NULL,
-    commission_percent NUMERIC(5,2) NOT NULL DEFAULT 0
-        CHECK (commission_percent >= 0 AND commission_percent <= 100),
-    status VARCHAR(30) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active','inactive')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+CREATE TABLE IF NOT EXISTS referral_codes (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    commission_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_referral_codes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE referrals (
-    id BIGSERIAL PRIMARY KEY,
-    referrer_id BIGINT NOT NULL REFERENCES users(id),
-    referred_user_id BIGINT NOT NULL REFERENCES users(id),
-    referral_code_id BIGINT REFERENCES referral_codes(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(referred_user_id)
-);
+CREATE TABLE IF NOT EXISTS referrals (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    referrer_id BIGINT UNSIGNED NOT NULL,
+    referred_user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+    referral_code_id BIGINT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_referrals_referrer FOREIGN KEY (referrer_id) REFERENCES users(id),
+    CONSTRAINT fk_referrals_referred FOREIGN KEY (referred_user_id) REFERENCES users(id),
+    CONSTRAINT fk_referrals_code FOREIGN KEY (referral_code_id) REFERENCES referral_codes(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE commissions (
-    id BIGSERIAL PRIMARY KEY,
-    referral_id BIGINT NOT NULL REFERENCES referrals(id) ON DELETE CASCADE,
-    order_id BIGINT NOT NULL REFERENCES orders(id),
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    amount NUMERIC(18,2) NOT NULL DEFAULT 0 CHECK (amount >= 0),
+CREATE TABLE IF NOT EXISTS commissions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    referral_id BIGINT UNSIGNED NOT NULL,
+    order_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    amount DECIMAL(18,2) NOT NULL DEFAULT 0,
     currency VARCHAR(10) NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending','approved','paid','cancelled')),
-    paid_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    status ENUM('pending','approved','paid','cancelled') NOT NULL DEFAULT 'pending',
+    paid_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_commissions_referral FOREIGN KEY (referral_id) REFERENCES referrals(id) ON DELETE CASCADE,
+    CONSTRAINT fk_commissions_order FOREIGN KEY (order_id) REFERENCES orders(id),
+    CONSTRAINT fk_commissions_user FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- SUPPORT
 -- =========================
 
-CREATE TABLE support_tickets (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    assigned_staff_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    assigned_staff_id BIGINT UNSIGNED NULL,
     subject VARCHAR(255) NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'open'
-        CHECK (status IN ('open','pending','resolved','closed')),
-    priority VARCHAR(30) NOT NULL DEFAULT 'normal'
-        CHECK (priority IN ('low','normal','high','urgent')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    status ENUM('open','pending','resolved','closed') NOT NULL DEFAULT 'open',
+    priority ENUM('low','normal','high','urgent') NOT NULL DEFAULT 'normal',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_support_tickets_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_support_tickets_staff FOREIGN KEY (assigned_staff_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE support_messages (
-    id BIGSERIAL PRIMARY KEY,
-    ticket_id BIGINT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
-    sender_id BIGINT NOT NULL REFERENCES users(id),
+CREATE TABLE IF NOT EXISTS support_messages (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    ticket_id BIGINT UNSIGNED NOT NULL,
+    sender_id BIGINT UNSIGNED NOT NULL,
     message TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_support_messages_ticket FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_support_messages_sender FOREIGN KEY (sender_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- NOTIFICATIONS
 -- =========================
 
-CREATE TABLE notifications (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(50),
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    type VARCHAR(50) NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
-    data JSONB NOT NULL DEFAULT '{}'::jsonb,
-    read_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    data JSON NOT NULL,
+    read_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE announcements (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS announcements (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'draft'
-        CHECK (status IN ('draft','published','archived')),
-    starts_at TIMESTAMPTZ,
-    ends_at TIMESTAMPTZ,
-    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    status ENUM('draft','published','archived') NOT NULL DEFAULT 'draft',
+    starts_at DATETIME NULL,
+    ends_at DATETIME NULL,
+    created_by BIGINT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_announcements_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- SYSTEM / SECURITY
 -- =========================
 
-CREATE TABLE system_settings (
-    id BIGSERIAL PRIMARY KEY,
-    key VARCHAR(255) UNIQUE NOT NULL,
-    value TEXT,
+CREATE TABLE IF NOT EXISTS system_settings (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    key_name VARCHAR(255) NOT NULL UNIQUE,
+    value TEXT NULL,
     type VARCHAR(50) NOT NULL DEFAULT 'string',
-    is_secret BOOLEAN NOT NULL DEFAULT FALSE,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    is_secret TINYINT(1) NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE audit_logs (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NULL,
     action VARCHAR(100) NOT NULL,
-    entity_type VARCHAR(100),
-    entity_id BIGINT,
-    old_data JSONB,
-    new_data JSONB,
-    ip_address INET,
-    user_agent TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    entity_type VARCHAR(100) NULL,
+    entity_id BIGINT UNSIGNED NULL,
+    old_data JSON NULL,
+    new_data JSON NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE webhook_logs (
-    id BIGSERIAL PRIMARY KEY,
-    provider VARCHAR(100),
-    event_type VARCHAR(150),
-    event_id VARCHAR(255),
-    payload JSONB,
-    status VARCHAR(30) NOT NULL DEFAULT 'received'
-        CHECK (status IN ('received','processed','failed','ignored')),
-    error_message TEXT,
-    processed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(provider, event_id)
-);
-
--- =========================
--- UPDATED_AT TRIGGER FUNCTION
--- =========================
-
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_users_updated BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_profiles_updated BEFORE UPDATE ON user_profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_addresses_updated BEFORE UPDATE ON user_addresses FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_plans_updated BEFORE UPDATE ON vpn_plans FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_nodes_updated BEFORE UPDATE ON vpn_nodes FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_node_groups_updated BEFORE UPDATE ON node_groups FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_orders_updated BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_payments_updated BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_subscriptions_updated BEFORE UPDATE ON subscriptions FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_subscription_access_updated BEFORE UPDATE ON subscription_access FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_tickets_updated BEFORE UPDATE ON support_tickets FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_announcements_updated BEFORE UPDATE ON announcements FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TABLE IF NOT EXISTS webhook_logs (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    provider VARCHAR(100) NULL,
+    event_type VARCHAR(150) NULL,
+    event_id VARCHAR(255) NULL,
+    payload JSON NULL,
+    status ENUM('received','processed','failed','ignored') NOT NULL DEFAULT 'received',
+    error_message TEXT NULL,
+    processed_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_webhook_provider_event (provider, event_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================
 -- VIEWS
@@ -582,11 +569,9 @@ SELECT
     CASE
         WHEN s.traffic_limit_bytes IS NULL THEN NULL
         WHEN s.traffic_limit_bytes = 0 THEN 100
-        ELSE ROUND((s.traffic_used_bytes::NUMERIC / s.traffic_limit_bytes::NUMERIC) * 100, 2)
+        ELSE ROUND((s.traffic_used_bytes / s.traffic_limit_bytes) * 100, 2)
     END AS traffic_percent,
     s.started_at,
     s.expires_at,
     s.status
 FROM subscriptions s;
-
-COMMIT;

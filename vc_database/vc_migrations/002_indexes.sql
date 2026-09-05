@@ -1,6 +1,4 @@
--- Migration 002: Performance Indexes
-
-BEGIN;
+-- Migration 002: Performance Indexes for MySQL
 
 CREATE INDEX idx_users_status ON users(status);
 CREATE INDEX idx_users_created_at ON users(created_at);
@@ -22,7 +20,6 @@ CREATE INDEX idx_subscriptions_order_id ON subscriptions(order_id);
 CREATE INDEX idx_subscriptions_status ON subscriptions(status);
 CREATE INDEX idx_subscriptions_expires_at ON subscriptions(expires_at);
 
-CREATE INDEX idx_subscription_tokens_hash ON subscription_tokens(token_hash);
 CREATE INDEX idx_subscription_tokens_status ON subscription_tokens(status);
 
 CREATE INDEX idx_subscription_access_subscription ON subscription_access(subscription_id);
@@ -46,5 +43,3 @@ CREATE INDEX idx_support_tickets_status ON support_tickets(status);
 CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_logs_created ON audit_logs(created_at);
-
-COMMIT;
