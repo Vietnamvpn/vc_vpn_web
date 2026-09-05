@@ -130,6 +130,10 @@ Khi có phiên bản mới trên GitHub, chạy lệnh sau để cập nhật m�
 * **Mục đích:** Tự động kéo mã nguồn mới nhất về và chạy quá trình cập nhật cấu hình/cơ sở dữ liệu.
 
 ```bash
+git config --global --add safe.directory /www/wwwroot/vpn2s.linksub24h.com
+```
+
+```bash
 cd /www/wwwroot/vpn2s.linksub24h.com
 ```
 
