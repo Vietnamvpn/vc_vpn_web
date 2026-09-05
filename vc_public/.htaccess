@@ -2,7 +2,7 @@
     Options -MultiViews -Indexes
     RewriteEngine On
 
-    # Xử lý chuyển hướng nếu không phải là tệp hoặc thư mục thực tế
+    # Xử lý chuyển hướng nếu yêu cầu không trỏ đến tệp hoặc thư mục vật lý thực tế
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L]

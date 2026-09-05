@@ -1,10 +1,8 @@
-Options -Indexes
-
 <IfModule mod_rewrite.c>
+    Options -Indexes
     RewriteEngine On
 
-    # Chuyển hướng mọi request không phải tệp/thư mục thực tế vào điểm vào duy nhất vc_public/index.php
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ vc_public/index.php?url=$1 [QSA,L]
+    # Chặn duyệt thư mục và bảo vệ mã nguồn gốc, đẩy request vào vc_public
+    RewriteCond %{REQUEST_URI} !^/vc_public/
+    RewriteRule ^(.*)$ vc_public/$1 [L]
 </IfModule>

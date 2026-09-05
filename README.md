@@ -224,6 +224,7 @@ vc_vpn_web/
 │   │
 │   ├── vc_controllers/
 │   │   ├── AuthController.php
+|   |   ├── AdminDashboardController.php
 │   │   ├── UserController.php
 │   │   ├── PlanController.php
 │   │   ├── OrderController.php
