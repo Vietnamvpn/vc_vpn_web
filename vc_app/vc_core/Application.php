@@ -12,6 +12,7 @@ class Application
     public function __construct()
     {
         self::$instance = $this;
+        $this->loadEnv();
         $this->loadConfigurations();
         $this->initDatabase();
         $this->initRouter();
@@ -20,6 +21,26 @@ class Application
     public static function getInstance()
     {
         return self::$instance;
+    }
+
+    protected function loadEnv()
+    {
+        $envPath = __DIR__ . '/../../.env';
+        if (file_exists($envPath)) {
+            $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (strpos(trim($line), '#') === 0) {
+                    continue;
+                }
+                if (strpos($line, '=') !== false) {
+                    list($name, $value) = explode('=', $line, 2);
+                    $name = trim($name);
+                    $value = trim(trim($value), '"\'');
+                    $_ENV[$name] = $value;
+                    \putenv("$name=$value");
+                }
+            }
+        }
     }
 
     protected function loadConfigurations()
@@ -57,17 +78,17 @@ class Application
         if ($dbConfig) {
             try {
                 $dsn = sprintf(
-                    'mysql:host=%s;dbname=%s;charset=%s',
-                    $dbConfig['host'],
+                    'mysql:host=%s;port=%s;dbname=%s;charset=%s',
+                    $dbConfig['host'] ?? '127.0.0.1',
+                    $dbConfig['port'] ?? 3306,
                     $dbConfig['dbname'],
                     $dbConfig['charset']
                 );
                 $this->db = new \PDO($dsn, $dbConfig['username'], $dbConfig['password'], $dbConfig['options']);
             } catch (\PDOException $e) {
-                // Ưu tiên bảo mật tuyệt đối: Không hiển thị chi tiết lỗi database ra ngoài màn hình
-                error_log('Database Connection Error: ' . $e->getMessage());
+                // Hiển thị lỗi chi tiết để debug trực tiếp trên web
                 http_response_code(500);
-                exit('Internal Server Error: Database connection failed.');
+                exit('Database Error Debug: ' . $e->getMessage());
             }
         }
     }
@@ -89,7 +110,17 @@ class Application
 
     public function run()
     {
-        // Nạp toàn bộ các tệp định tuyến từ thư mục vc_routes
+        if (!defined('APP_BASE_PATH')) {
+            define('APP_BASE_PATH', dirname(__DIR__, 2));
+        }
+
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+        $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        
+        if (($pos = strpos($requestUri, '?')) !== false) {
+            $requestUri = substr($requestUri, 0, $pos);
+        }
+
         $routeDir = __DIR__ . '/../vc_routes/';
         $routeFiles = ['web.php', 'api.php', 'auth.php', 'user.php', 'admin.php', 'staff.php', 'subscription.php'];
         
@@ -100,16 +131,9 @@ class Application
             }
         }
 
-        // Lấy URI và HTTP Method hiện tại của request
-        $uri = $_SERVER['REQUEST_URI'] ?? '/';
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        
-        // Loại bỏ query string khỏi URI để định tuyến chính xác
-        if (($pos = strpos($uri, '?')) !== false) {
-            $uri = substr($uri, 0, $pos);
-        }
+        $uri = $requestUri;
+        $method = $requestMethod;
 
-        // Chạy bộ định tuyến phân phối request
         $this->router->dispatch($uri, $method);
     }
 }

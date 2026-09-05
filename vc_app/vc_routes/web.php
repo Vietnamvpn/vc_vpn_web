@@ -56,10 +56,14 @@ switch ($uri) {
         break;
 }
 
-// Kiểm tra và hiển thị trang tương ứng
-if ($viewFile && file_exists($viewFile)) {
-    require_once $viewFile;
-} else {
-    header("HTTP/1.0 404 Not Found");
-    echo "404 Page Not Found.";
+/// Kiểm tra và hiển thị trang tương ứng
+if ($viewFile) {
+    if (file_exists($viewFile)) {
+        require_once $viewFile;
+        exit;
+    } else {
+        header("HTTP/1.0 404 Not Found");
+        echo "404 Page Not Found.";
+        exit;
+    }
 }
